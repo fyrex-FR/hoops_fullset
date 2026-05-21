@@ -459,6 +459,10 @@ select option {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
 }
 
+.mobile-card-list {
+  display: none;
+}
+
 table {
   width: 100%;
   min-width: 1080px;
@@ -718,5 +722,96 @@ td:nth-child(2) {
   .icon-button.labeled {
     width: 100%;
     margin-left: 0;
+  }
+
+  .table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  table {
+    display: none;
+  }
+
+  .mobile-card-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-card {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(20, 20, 23, 0.82);
+    padding: 12px;
+  }
+
+  .mobile-card-main {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-card-main strong,
+  .mobile-card-main small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-card-main strong {
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .mobile-card-main small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .mobile-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .mobile-actions label {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .mobile-actions small {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .mobile-actions .stepper,
+  .mobile-actions .icon-button,
+  .mobile-actions .priority {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .mobile-actions .stepper {
+    grid-template-columns: 38px 1fr 38px;
+  }
+
+  .mobile-actions .icon-button,
+  .mobile-actions .priority {
+    font-size: 13px;
+    font-weight: 900;
   }
 }

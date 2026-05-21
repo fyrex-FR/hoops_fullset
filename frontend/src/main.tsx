@@ -717,99 +717,219 @@ function App() {
         ) : error ? (
           <p className="state state-error">Could not load checklist: {error}</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Player</th>
-                <th>Team</th>
-                <th>Subset</th>
-                <th>Type</th>
-                <th>Owned</th>
-                <th>Trade</th>
-                <th>Want</th>
-                <th>Priority</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Player</th>
+                  <th>Team</th>
+                  <th>Subset</th>
+                  <th>Type</th>
+                  <th>Owned</th>
+                  <th>Trade</th>
+                  <th>Want</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCards.map((card) => {
+                  const entry = collection[card.id] ?? emptyEntry();
+                  return (
+                    <tr key={card.id}>
+                      <td className="number">{card.card_number}</td>
+                      <td>{card.player_name}</td>
+                      <td>{card.team_name}</td>
+                      <td>{card.subset}</td>
+                      <td>
+                        <span className="pill">{card.category}</span>
+                      </td>
+                      <td>
+                        <div className="stepper">
+                          <button
+                            aria-label="Decrease owned"
+                            onClick={() =>
+                              updateCard(card.id, (current) => {
+                                const owned_count = Math.max(0, current.owned_count - 1);
+                                return {
+                                  ...current,
+                                  owned_count,
+                                  trade_count: Math.min(current.trade_count, owned_count),
+                                };
+                              })
+                            }
+                            type="button"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span>{entry.owned_count}</span>
+                          <button
+                            aria-label="Increase owned"
+                            onClick={() =>
+                              updateCard(card.id, (current) => ({
+                                ...current,
+                                owned_count: current.owned_count + 1,
+                              }))
+                            }
+                            type="button"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="stepper">
+                          <button
+                            aria-label="Decrease trade count"
+                            onClick={() =>
+                              updateCard(card.id, (current) => ({
+                                ...current,
+                                trade_count: Math.max(0, current.trade_count - 1),
+                              }))
+                            }
+                            type="button"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span>{entry.trade_count}</span>
+                          <button
+                            aria-label="Increase trade count"
+                            onClick={() =>
+                              updateCard(card.id, (current) => {
+                                const owned_count = Math.max(current.owned_count, current.trade_count + 1);
+                                return {
+                                  ...current,
+                                  owned_count,
+                                  trade_count: current.trade_count + 1,
+                                };
+                              })
+                            }
+                            type="button"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className={`icon-button ${entry.wanted ? "selected" : ""}`}
+                          onClick={() =>
+                            updateCard(card.id, (current) => ({ ...current, wanted: !current.wanted }))
+                          }
+                          type="button"
+                        >
+                          <Heart size={16} />
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          className={`priority priority-${entry.priority}`}
+                          onClick={() =>
+                            updateCard(card.id, (current) => ({
+                              ...current,
+                              priority: current.priority === 3 ? 0 : clamp(current.priority + 1, 0, 3),
+                              wanted: current.priority === 0 ? true : current.wanted,
+                            }))
+                          }
+                          type="button"
+                        >
+                          <Star size={15} />
+                          {entry.priority}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="mobile-card-list" aria-label="Cards">
               {filteredCards.map((card) => {
                 const entry = collection[card.id] ?? emptyEntry();
                 return (
-                  <tr key={card.id}>
-                    <td className="number">{card.card_number}</td>
-                    <td>{card.player_name}</td>
-                    <td>{card.team_name}</td>
-                    <td>{card.subset}</td>
-                    <td>
+                  <article className="mobile-card" key={card.id}>
+                    <div className="mobile-card-main">
+                      <span className="number">{card.card_number}</span>
+                      <div>
+                        <strong>{card.player_name}</strong>
+                        <small>
+                          {card.team_name} · {card.subset}
+                        </small>
+                      </div>
                       <span className="pill">{card.category}</span>
-                    </td>
-                    <td>
-                      <div className="stepper">
-                        <button
-                          aria-label="Decrease owned"
-                          onClick={() =>
-                            updateCard(card.id, (current) => {
-                              const owned_count = Math.max(0, current.owned_count - 1);
-                              return {
+                    </div>
+
+                    <div className="mobile-actions">
+                      <label>
+                        <small>Owned</small>
+                        <div className="stepper">
+                          <button
+                            aria-label="Decrease owned"
+                            onClick={() =>
+                              updateCard(card.id, (current) => {
+                                const owned_count = Math.max(0, current.owned_count - 1);
+                                return {
+                                  ...current,
+                                  owned_count,
+                                  trade_count: Math.min(current.trade_count, owned_count),
+                                };
+                              })
+                            }
+                            type="button"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span>{entry.owned_count}</span>
+                          <button
+                            aria-label="Increase owned"
+                            onClick={() =>
+                              updateCard(card.id, (current) => ({
                                 ...current,
-                                owned_count,
-                                trade_count: Math.min(current.trade_count, owned_count),
-                              };
-                            })
-                          }
-                          type="button"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span>{entry.owned_count}</span>
-                        <button
-                          aria-label="Increase owned"
-                          onClick={() =>
-                            updateCard(card.id, (current) => ({
-                              ...current,
-                              owned_count: current.owned_count + 1,
-                            }))
-                          }
-                          type="button"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="stepper">
-                        <button
-                          aria-label="Decrease trade count"
-                          onClick={() =>
-                            updateCard(card.id, (current) => ({
-                              ...current,
-                              trade_count: Math.max(0, current.trade_count - 1),
-                            }))
-                          }
-                          type="button"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span>{entry.trade_count}</span>
-                        <button
-                          aria-label="Increase trade count"
-                          onClick={() =>
-                            updateCard(card.id, (current) => {
-                              const owned_count = Math.max(current.owned_count, current.trade_count + 1);
-                              return {
+                                owned_count: current.owned_count + 1,
+                              }))
+                            }
+                            type="button"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </label>
+
+                      <label>
+                        <small>Trade</small>
+                        <div className="stepper">
+                          <button
+                            aria-label="Decrease trade count"
+                            onClick={() =>
+                              updateCard(card.id, (current) => ({
                                 ...current,
-                                owned_count,
-                                trade_count: current.trade_count + 1,
-                              };
-                            })
-                          }
-                          type="button"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    </td>
-                    <td>
+                                trade_count: Math.max(0, current.trade_count - 1),
+                              }))
+                            }
+                            type="button"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span>{entry.trade_count}</span>
+                          <button
+                            aria-label="Increase trade count"
+                            onClick={() =>
+                              updateCard(card.id, (current) => {
+                                const owned_count = Math.max(current.owned_count, current.trade_count + 1);
+                                return {
+                                  ...current,
+                                  owned_count,
+                                  trade_count: current.trade_count + 1,
+                                };
+                              })
+                            }
+                            type="button"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </label>
+
                       <button
                         className={`icon-button ${entry.wanted ? "selected" : ""}`}
                         onClick={() =>
@@ -818,9 +938,9 @@ function App() {
                         type="button"
                       >
                         <Heart size={16} />
+                        Want
                       </button>
-                    </td>
-                    <td>
+
                       <button
                         className={`priority priority-${entry.priority}`}
                         onClick={() =>
@@ -833,14 +953,14 @@ function App() {
                         type="button"
                       >
                         <Star size={15} />
-                        {entry.priority}
+                        Prio {entry.priority}
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </article>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </section>
     </main>
