@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import {
   Download,
   Heart,
+  LogIn,
   Minus,
   Plus,
   Search,
@@ -107,6 +108,7 @@ function App() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [dbCardIds, setDbCardIds] = useState<Record<string, string>>({});
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
@@ -557,13 +559,18 @@ function App() {
       </section>
 
       <section className="account-strip" aria-label="Account">
-        <div className="account-title">
+        <button
+          className="account-title"
+          type="button"
+          onClick={() => setIsAccountOpen((current) => !current)}
+          aria-expanded={isAccountOpen}
+        >
           <UserIcon size={17} />
-          <span>Compte</span>
-        </div>
+          <span>{user ? profile?.display_name || user.email : "Compte"}</span>
+        </button>
         {supabase ? (
           user ? (
-            <div className="account-panel">
+            <div className={`account-panel ${isAccountOpen ? "open" : ""}`}>
               <div className="account-line">
                 <UserIcon size={17} />
                 <span>
@@ -595,7 +602,7 @@ function App() {
               </form>
             </div>
           ) : (
-            <form className="account-form" onSubmit={submitLogin}>
+            <form className={`account-form ${isAccountOpen ? "open" : ""}`} onSubmit={submitLogin}>
               <div className="account-form-header">
                 <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
                 <span>
@@ -664,6 +671,12 @@ function App() {
         ) : (
           <span>Local mode. Cloud sync inactive until Supabase env vars are available in this build.</span>
         )}
+        {!user && !isAccountOpen ? (
+          <button className="account-cta" type="button" onClick={() => setIsAccountOpen(true)}>
+            <LogIn size={16} />
+            Connexion / inscription
+          </button>
+        ) : null}
       </section>
 
       <section className="toolbar" aria-label="Filters">
