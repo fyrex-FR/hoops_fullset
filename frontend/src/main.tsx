@@ -95,8 +95,11 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [signupDiscord, setSignupDiscord] = useState("");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileName, setProfileName] = useState("");
   const [discordHandle, setDiscordHandle] = useState("");
@@ -383,31 +386,96 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
-  async function sendMagicLink(event: React.FormEvent) {
-    event.preventDefault();
+  async function upsertProfile(displayName: string, discord: string) {
     if (!supabase) return;
 
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setAuthMessage("Entre ton email, puis appuie sur Magic link.");
+    const { data } = await supabase.auth.getUser();
+    const currentUser = data.user;
+    if (!currentUser) return;
+
+    const cleanDisplayName = displayName.trim() || currentUser.email?.split("@")[0] || "Collector";
+    const cleanDiscord = discord.trim();
+    const { data: profileData, error: profileError } = await supabase
+      .from("hoops_profiles")
+      .upsert({
+        id: currentUser.id,
+        display_name: cleanDisplayName,
+        discord_handle: cleanDiscord || null,
+      })
+      .select("id, display_name, discord_handle")
+      .single();
+
+    if (profileError) {
+      setAuthMessage(`Compte OK, profil KO: ${profileError.message}`);
       return;
     }
 
-    setIsSendingMagicLink(true);
-    setAuthMessage("Envoi du lien...");
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: window.location.origin,
-        shouldCreateUser: true,
-      },
-    });
-    setIsSendingMagicLink(false);
+    setProfile(profileData);
+    setProfileName(profileData.display_name);
+    setDiscordHandle(profileData.discord_handle ?? "");
+  }
+
+  async function authenticate(mode: "login" | "signup") {
+    if (!supabase || isAuthenticating) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setAuthMessage("Entre ton email.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setAuthMessage("Mot de passe: minimum 6 caracteres.");
+      return;
+    }
+
+    if (mode === "signup" && !signupName.trim()) {
+      setAuthMessage("Choisis un pseudo public.");
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setAuthMessage(mode === "signup" ? "Creation du compte..." : "Connexion...");
+
+    const result =
+      mode === "signup"
+        ? await supabase.auth.signUp({
+            email: normalizedEmail,
+            password,
+          })
+        : await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+
+    if (result.error) {
+      setIsAuthenticating(false);
+      setAuthMessage(`Erreur auth: ${result.error.message}`);
+      return;
+    }
+
+    if (mode === "signup" && result.data.session) {
+      await upsertProfile(signupName, signupDiscord);
+    }
+
+    setIsAuthenticating(false);
+    if (mode === "signup" && !result.data.session) {
+      setAuthMessage(
+        "Compte cree, mais Supabase demande encore une confirmation email. Desactive Confirm email pour avoir une inscription directe.",
+      );
+      return;
+    }
+
     setAuthMessage(
-      authError
-        ? `Erreur auth: ${authError.message}`
-        : `Lien envoyé à ${normalizedEmail}. Ouvre le mail sur ce téléphone, puis reviens ici.`,
+      mode === "signup"
+        ? "Compte cree. Tu peux remplir ta checklist."
+        : "Connecte. Sync cloud active.",
     );
+  }
+
+  function submitLogin(event: React.FormEvent) {
+    event.preventDefault();
+    void authenticate("login");
   }
 
   async function saveProfile(event: React.FormEvent) {
@@ -527,18 +595,46 @@ function App() {
               </form>
             </div>
           ) : (
-            <form className="account-form" onSubmit={sendMagicLink}>
+            <form className="account-form" onSubmit={submitLogin}>
               <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
               <input
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="Ton email pour creer/connecter le compte"
+                placeholder="Email"
                 required
                 type="email"
               />
-              <button disabled={isSendingMagicLink} type="submit">
-                {isSendingMagicLink ? "Envoi..." : "Recevoir le lien"}
+              <input
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mot de passe"
+                required
+                type="password"
+              />
+              <input
+                autoComplete="nickname"
+                value={signupName}
+                onChange={(event) => setSignupName(event.target.value)}
+                placeholder="Pseudo public"
+                type="text"
+              />
+              <input
+                value={signupDiscord}
+                onChange={(event) => setSignupDiscord(event.target.value)}
+                placeholder="Discord"
+                type="text"
+              />
+              <button disabled={isAuthenticating} type="submit">
+                {isAuthenticating ? "..." : "Se connecter"}
+              </button>
+              <button
+                disabled={isAuthenticating}
+                onClick={() => void authenticate("signup")}
+                type="button"
+              >
+                Creer le compte
               </button>
               {authMessage ? <span className="account-message">{authMessage}</span> : null}
             </form>

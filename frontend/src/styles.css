@@ -246,6 +246,11 @@ h1 {
   gap: 8px;
 }
 
+.account-form {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1.1fr) minmax(130px, 0.9fr) minmax(130px, 0.8fr) minmax(120px, 0.8fr) auto auto;
+}
+
 .account-line span {
   display: grid;
   gap: 2px;
@@ -258,6 +263,10 @@ h1 {
 }
 
 .account-form input,
+.profile-form input {
+  min-width: 0;
+}
+
 .profile-form input {
   max-width: 320px;
 }
@@ -601,6 +610,10 @@ td:nth-child(2) {
   .profile-form input {
     width: 100%;
     max-width: none;
+  }
+
+  .account-form-icon {
+    display: none;
   }
 
   .icon-button.labeled {

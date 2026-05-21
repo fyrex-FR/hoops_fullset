@@ -23,6 +23,8 @@ This app is designed to reuse an existing Supabase project instead of requiring 
 
 That keeps auth and quotas shared while leaving the Hoops data model isolated.
 
+Auth uses email + password from the app, not magic links. In Supabase Auth providers, keep Email enabled and disable required email confirmation if users should create an account and start tracking cards immediately without being redirected through the shared project's Site URL.
+
 ## Local development
 
 Backend:
