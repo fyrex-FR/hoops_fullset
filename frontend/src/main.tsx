@@ -49,7 +49,7 @@ type UserCardRow = CollectionEntry & {
   hoops_cards: DbCard | DbCard[] | null;
 };
 
-type ViewMode = "all" | "owned" | "wanted" | "trade";
+type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://api-fullset.cardvaults.app";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -83,6 +83,10 @@ function isActiveEntry(entry: CollectionEntry) {
 
 function cardLookupKey(cardNumber: string, subset: string) {
   return `${cardNumber}|||${subset}`;
+}
+
+function normalizeCardNumber(value: string) {
+  return value.trim().replace(/^#\s*/i, "").replace(/^no\.?\s*/i, "").toLowerCase();
 }
 
 function App() {
@@ -291,17 +295,21 @@ function App() {
 
   const filteredCards = useMemo(() => {
     const needle = query.trim().toLowerCase();
+    const numberNeedle = normalizeCardNumber(query);
     return cards.filter((card) => {
       const entry = collection[card.id] ?? emptyEntry();
       const categoryMatch = category === "All" || card.category === category;
+      const numberMatch = Boolean(numberNeedle) && normalizeCardNumber(card.card_number) === numberNeedle;
       const queryMatch =
         !needle ||
+        numberMatch ||
         [card.card_number, card.player_name, card.team_name, card.subset]
           .join(" ")
           .toLowerCase()
           .includes(needle);
       const modeMatch =
         viewMode === "all" ||
+        (viewMode === "missing" && entry.owned_count === 0) ||
         (viewMode === "owned" && entry.owned_count > 0) ||
         (viewMode === "wanted" && entry.wanted) ||
         (viewMode === "trade" && entry.trade_count > 0);
@@ -323,6 +331,24 @@ function App() {
       },
       { autos: 0, base: 0, inserts: 0, owned: 0, trade: 0, wanted: 0 },
     );
+  }, [cards, collection]);
+
+  const subsetProgress = useMemo(() => {
+    const progress = new Map<string, { owned: number; total: number }>();
+    for (const card of cards) {
+      const current = progress.get(card.subset) ?? { owned: 0, total: 0 };
+      current.total += 1;
+      if ((collection[card.id] ?? emptyEntry()).owned_count > 0) current.owned += 1;
+      progress.set(card.subset, current);
+    }
+
+    return Array.from(progress.entries())
+      .map(([subset, value]) => ({
+        subset,
+        ...value,
+        percent: value.total > 0 ? Math.round((value.owned / value.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total || a.subset.localeCompare(b.subset));
   }, [cards, collection]);
 
   async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
@@ -570,6 +596,20 @@ function App() {
         </button>
       </section>
 
+      <section className="subset-progress" aria-label="Subset progress">
+        {subsetProgress.map((item) => (
+          <div className="subset-progress-item" key={item.subset}>
+            <div>
+              <strong>{item.subset}</strong>
+              <span>
+                {item.owned}/{item.total} · {item.percent}%
+              </span>
+            </div>
+            <meter min="0" max={item.total} value={item.owned} aria-label={`${item.subset} progress`} />
+          </div>
+        ))}
+      </section>
+
       <section className="account-strip" aria-label="Account">
         <button
           className="account-title"
@@ -697,7 +737,7 @@ function App() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search player, team, subset, number"
+            placeholder="Search player, team, subset, #145"
           />
         </label>
         <div className="filters">
@@ -711,7 +751,7 @@ function App() {
       </section>
 
       <section className="view-tabs" aria-label="Collection views">
-        {(["all", "owned", "wanted", "trade"] as ViewMode[]).map((mode) => (
+        {(["all", "missing", "owned", "wanted", "trade"] as ViewMode[]).map((mode) => (
           <button
             className={viewMode === mode ? "active" : ""}
             key={mode}
@@ -720,6 +760,8 @@ function App() {
           >
             {mode === "all"
               ? "Toutes"
+              : mode === "missing"
+                ? "A completer"
               : mode === "owned"
                 ? "Je l'ai"
                 : mode === "wanted"

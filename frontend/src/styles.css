@@ -196,6 +196,71 @@ h1 {
   font-size: 13px;
 }
 
+.subset-progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.subset-progress-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(20, 20, 23, 0.72);
+  padding: 11px 12px;
+}
+
+.subset-progress-item div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.subset-progress-item strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subset-progress-item span {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.subset-progress-item meter {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+}
+
+.subset-progress-item meter::-webkit-meter-bar {
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+}
+
+.subset-progress-item meter::-webkit-meter-optimum-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+}
+
+.subset-progress-item meter::-moz-meter-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+}
+
 .account-strip {
   position: relative;
   min-height: 46px;
