@@ -13,8 +13,18 @@ body {
   margin: 0;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
 .shell {
-  width: min(1180px, calc(100vw - 32px));
+  width: min(1240px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0 40px;
 }
@@ -24,7 +34,7 @@ body {
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .eyebrow {
@@ -39,11 +49,16 @@ h1 {
   line-height: 1.1;
 }
 
-.stats {
+.stats,
+.collection-bar,
+.view-tabs {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 8px;
+}
+
+.stats {
+  justify-content: flex-end;
 }
 
 .stats span,
@@ -56,10 +71,68 @@ h1 {
   padding: 6px 10px;
 }
 
+.collection-bar {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.collection-bar div {
+  min-width: 112px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.collection-bar strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.collection-bar span,
+.account-strip {
+  color: #697586;
+  font-size: 13px;
+}
+
+.account-strip {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+}
+
+.account-form,
+.account-line {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-form input {
+  max-width: 260px;
+}
+
+.account-form button,
+.account-line button,
+.view-tabs button {
+  border: 1px solid #ccd6e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #17202a;
+  padding: 8px 12px;
+}
+
 .toolbar {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .search,
@@ -85,11 +158,24 @@ select {
   outline: 0;
   background: transparent;
   color: #17202a;
-  font: inherit;
 }
 
 .filters {
   width: 190px;
+}
+
+.view-tabs {
+  margin-bottom: 14px;
+}
+
+.view-tabs button {
+  text-transform: capitalize;
+}
+
+.view-tabs button.active {
+  border-color: #17202a;
+  background: #17202a;
+  color: #fff;
 }
 
 .table-wrap {
@@ -101,13 +187,13 @@ select {
 
 table {
   width: 100%;
-  min-width: 780px;
+  min-width: 1080px;
   border-collapse: collapse;
 }
 
 th,
 td {
-  padding: 13px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid #edf1f5;
   text-align: left;
   white-space: nowrap;
@@ -123,6 +209,68 @@ th {
   font-weight: 700;
 }
 
+.stepper {
+  width: 104px;
+  display: grid;
+  grid-template-columns: 30px 1fr 30px;
+  align-items: center;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stepper button,
+.icon-button,
+.priority {
+  border: 0;
+  background: #fff;
+  color: #344054;
+}
+
+.stepper button {
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.stepper span {
+  text-align: center;
+  font-weight: 700;
+}
+
+.icon-button,
+.priority {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  padding: 0 9px;
+}
+
+.icon-button.labeled {
+  min-height: 42px;
+  margin-left: auto;
+  background: #17202a;
+  color: #fff;
+}
+
+.icon-button.selected {
+  border-color: #c03744;
+  background: #fff1f3;
+  color: #c03744;
+}
+
+.priority-1,
+.priority-2,
+.priority-3 {
+  border-color: #c7831b;
+  background: #fff8eb;
+  color: #8a4f00;
+}
+
 .state {
   margin: 0;
   padding: 18px;
@@ -135,7 +283,9 @@ th {
 
 @media (max-width: 720px) {
   .topbar,
-  .toolbar {
+  .toolbar,
+  .account-form,
+  .account-line {
     align-items: stretch;
     flex-direction: column;
   }
@@ -144,7 +294,18 @@ th {
     justify-content: flex-start;
   }
 
-  .filters {
+  .filters,
+  .account-form input {
     width: 100%;
+    max-width: none;
+  }
+
+  .collection-bar div {
+    flex: 1 1 30%;
+  }
+
+  .icon-button.labeled {
+    width: 100%;
+    margin-left: 0;
   }
 }
