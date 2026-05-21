@@ -9,6 +9,7 @@ import {
   Search,
   SlidersHorizontal,
   Star,
+  UserPlus,
   User as UserIcon,
 } from "lucide-react";
 import "./styles.css";
@@ -95,6 +96,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileName, setProfileName] = useState("");
   const [discordHandle, setDiscordHandle] = useState("");
@@ -383,13 +385,29 @@ function App() {
 
   async function sendMagicLink(event: React.FormEvent) {
     event.preventDefault();
-    if (!supabase || !email.trim()) return;
+    if (!supabase) return;
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setAuthMessage("Entre ton email, puis appuie sur Magic link.");
+      return;
+    }
+
+    setIsSendingMagicLink(true);
+    setAuthMessage("Envoi du lien...");
     const { error: authError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+      email: normalizedEmail,
+      options: {
+        emailRedirectTo: window.location.origin,
+        shouldCreateUser: true,
+      },
     });
-    setAuthMessage(authError ? authError.message : "Magic link sent");
+    setIsSendingMagicLink(false);
+    setAuthMessage(
+      authError
+        ? `Erreur auth: ${authError.message}`
+        : `Lien envoyé à ${normalizedEmail}. Ouvre le mail sur ce téléphone, puis reviens ici.`,
+    );
   }
 
   async function saveProfile(event: React.FormEvent) {
@@ -471,6 +489,10 @@ function App() {
       </section>
 
       <section className="account-strip" aria-label="Account">
+        <div className="account-title">
+          <UserIcon size={17} />
+          <span>Compte</span>
+        </div>
         {supabase ? (
           user ? (
             <div className="account-panel">
@@ -506,14 +528,19 @@ function App() {
             </div>
           ) : (
             <form className="account-form" onSubmit={sendMagicLink}>
+              <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
               <input
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email for cloud sync"
+                placeholder="Ton email pour creer/connecter le compte"
+                required
                 type="email"
               />
-              <button type="submit">Magic link</button>
-              {authMessage ? <span>{authMessage}</span> : null}
+              <button disabled={isSendingMagicLink} type="submit">
+                {isSendingMagicLink ? "Envoi..." : "Recevoir le lien"}
+              </button>
+              {authMessage ? <span className="account-message">{authMessage}</span> : null}
             </form>
           )
         ) : (

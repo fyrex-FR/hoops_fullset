@@ -200,11 +200,30 @@ h1 {
   min-height: 46px;
   display: flex;
   align-items: center;
+  gap: 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: rgba(20, 20, 23, 0.72);
   margin-bottom: 12px;
   padding: 9px 12px;
+}
+
+.account-title {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  border-right: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 900;
+  padding-right: 12px;
+}
+
+.account-title svg,
+.account-form-icon {
+  color: var(--accent);
 }
 
 .account-panel,
@@ -256,6 +275,18 @@ h1 {
   font-size: 13px;
   font-weight: 800;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.account-form button:disabled,
+.profile-form button:disabled {
+  opacity: 0.62;
+}
+
+.account-message {
+  min-width: min(100%, 280px);
+  color: var(--accent-light);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .account-form button:hover,
@@ -529,12 +560,21 @@ td:nth-child(2) {
 
   .topbar,
   .toolbar,
+  .account-strip,
   .account-form,
   .account-line,
   .profile-form {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .account-title {
+    width: 100%;
+    justify-content: flex-start;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 9px;
   }
 
   .topbar {
