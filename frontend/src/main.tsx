@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import {
-  Check,
   Download,
   Heart,
   Minus,
@@ -28,6 +27,12 @@ type CollectionEntry = {
   trade_count: number;
   wanted: boolean;
   priority: number;
+};
+
+type UserProfile = {
+  id: string;
+  display_name: string;
+  discord_handle: string | null;
 };
 
 type ViewMode = "all" | "owned" | "wanted" | "trade";
@@ -70,6 +75,11 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [discordHandle, setDiscordHandle] = useState("");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
@@ -104,6 +114,33 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!supabase || !user) {
+      setProfile(null);
+      setProfileName("");
+      setDiscordHandle("");
+      setProfileMessage(null);
+      return;
+    }
+
+    supabase
+      .from("hoops_profiles")
+      .select("id, display_name, discord_handle")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data, error: profileError }) => {
+        if (profileError) {
+          setProfileMessage(profileError.message);
+          return;
+        }
+
+        const fallbackName = user.email?.split("@")[0] ?? "";
+        setProfile(data);
+        setProfileName(data?.display_name ?? fallbackName);
+        setDiscordHandle(data?.discord_handle ?? "");
+      });
+  }, [user]);
 
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(cards.map((card) => card.category))).sort()],
@@ -193,6 +230,39 @@ function App() {
     setAuthMessage(authError ? authError.message : "Magic link sent");
   }
 
+  async function saveProfile(event: React.FormEvent) {
+    event.preventDefault();
+    if (!supabase || !user) return;
+
+    const displayName = profileName.trim();
+    const discord = discordHandle.trim();
+    if (!displayName) {
+      setProfileMessage("Choose a public username.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileMessage(null);
+    const { data, error: saveError } = await supabase
+      .from("hoops_profiles")
+      .upsert({
+        id: user.id,
+        display_name: displayName,
+        discord_handle: discord || null,
+      })
+      .select("id, display_name, discord_handle")
+      .single();
+
+    setIsSavingProfile(false);
+    if (saveError) {
+      setProfileMessage(saveError.message);
+      return;
+    }
+
+    setProfile(data);
+    setProfileMessage("Profile saved.");
+  }
+
   const baseCount = totals.base;
   const autoCount = totals.autos;
   const insertCount = totals.inserts;
@@ -241,12 +311,35 @@ function App() {
       <section className="account-strip" aria-label="Account">
         {supabase ? (
           user ? (
-            <div className="account-line">
-              <UserIcon size={17} />
-              <span>{user.email}</span>
-              <button type="button" onClick={() => supabase.auth.signOut()}>
-                Sign out
-              </button>
+            <div className="account-panel">
+              <div className="account-line">
+                <UserIcon size={17} />
+                <span>
+                  {profile?.display_name || user.email}
+                  {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
+                </span>
+                <button type="button" onClick={() => supabase.auth.signOut()}>
+                  Sign out
+                </button>
+              </div>
+              <form className="profile-form" onSubmit={saveProfile}>
+                <input
+                  value={profileName}
+                  onChange={(event) => setProfileName(event.target.value)}
+                  placeholder="Public username"
+                  type="text"
+                />
+                <input
+                  value={discordHandle}
+                  onChange={(event) => setDiscordHandle(event.target.value)}
+                  placeholder="Discord username"
+                  type="text"
+                />
+                <button disabled={isSavingProfile} type="submit">
+                  {isSavingProfile ? "Saving..." : "Save profile"}
+                </button>
+                {profileMessage ? <span>{profileMessage}</span> : null}
+              </form>
             </div>
           ) : (
             <form className="account-form" onSubmit={sendMagicLink}>

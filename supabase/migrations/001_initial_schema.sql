@@ -22,9 +22,17 @@ create table if not exists public.hoops_cards (
 create table if not exists public.hoops_profiles (
   id uuid primary key,
   display_name text not null,
+  discord_handle text,
   contact_url text,
+  updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+alter table public.hoops_profiles
+  add column if not exists discord_handle text;
+
+alter table public.hoops_profiles
+  add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.hoops_user_cards (
   user_id uuid not null references public.hoops_profiles(id) on delete cascade,

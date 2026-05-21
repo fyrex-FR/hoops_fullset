@@ -207,20 +207,45 @@ h1 {
   padding: 9px 12px;
 }
 
+.account-panel,
 .account-form,
-.account-line {
+.account-line,
+.profile-form {
   width: 100%;
+}
+
+.account-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.account-form,
+.account-line,
+.profile-form {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.account-form input {
+.account-line span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-line small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.account-form input,
+.profile-form input {
   max-width: 320px;
 }
 
 .account-form button,
 .account-line button,
+.profile-form button,
 .view-tabs button {
   min-height: 38px;
   border: 1px solid var(--border-strong);
@@ -235,6 +260,7 @@ h1 {
 
 .account-form button:hover,
 .account-line button:hover,
+.profile-form button:hover,
 .view-tabs button:hover {
   background: var(--bg-hover);
   border-color: var(--border-accent);
@@ -504,7 +530,8 @@ td:nth-child(2) {
   .topbar,
   .toolbar,
   .account-form,
-  .account-line {
+  .account-line,
+  .profile-form {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -530,7 +557,8 @@ td:nth-child(2) {
     font-size: 22px;
   }
 
-  .account-form input {
+  .account-form input,
+  .profile-form input {
     width: 100%;
     max-width: none;
   }
