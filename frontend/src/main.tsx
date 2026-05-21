@@ -10,6 +10,7 @@ import {
   Search,
   SlidersHorizontal,
   Star,
+  User as UserIcon,
 } from "lucide-react";
 import "./styles.css";
 
@@ -199,8 +200,15 @@ function App() {
   return (
     <main className="shell">
       <section className="topbar">
-        <div>
-          <p className="eyebrow">2025-26 Topps NBA Hoops Basketball</p>
+        <button className="brand" type="button" aria-label="Hoops Full Set">
+          <span className="brand-mark">H</span>
+          <span>
+            <strong>Hoops<span>Fullset</span></strong>
+            <small>2025-26 Topps NBA Hoops Basketball</small>
+          </span>
+        </button>
+        <div className="headline">
+          <p className="eyebrow">Checklist tracker</p>
           <h1>Full set tracker</h1>
         </div>
         <div className="stats" aria-label="Checklist stats">
@@ -234,7 +242,7 @@ function App() {
         {supabase ? (
           user ? (
             <div className="account-line">
-              <Check size={17} />
+              <UserIcon size={17} />
               <span>{user.email}</span>
               <button type="button" onClick={() => supabase.auth.signOut()}>
                 Sign out
@@ -253,7 +261,7 @@ function App() {
             </form>
           )
         ) : (
-          <span>Local mode. Add Supabase env vars to enable login.</span>
+          <span>Local mode. Cloud sync inactive until Supabase env vars are available in this build.</span>
         )}
       </section>
 
@@ -284,7 +292,7 @@ function App() {
             onClick={() => setViewMode(mode)}
             type="button"
           >
-            {mode}
+            {mode === "all" ? "All cards" : mode === "trade" ? "For trade" : mode}
           </button>
         ))}
       </section>
