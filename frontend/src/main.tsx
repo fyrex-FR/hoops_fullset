@@ -35,12 +35,24 @@ type UserProfile = {
   discord_handle: string | null;
 };
 
+type DbCard = {
+  id: string;
+  card_number: string;
+  subset: string;
+};
+
+type UserCardRow = CollectionEntry & {
+  card_id: string;
+  hoops_cards: DbCard | DbCard[] | null;
+};
+
 type ViewMode = "all" | "owned" | "wanted" | "trade";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://api-fullset.cardvaults.app";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_KEY = "hoops-fullset-collection-v1";
+const CLOUD_MIGRATION_KEY = "hoops-fullset-cloud-migrated-v1";
 
 const supabase: SupabaseClient | null =
   SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -62,6 +74,14 @@ function readStoredCollection(): Record<string, CollectionEntry> {
   }
 }
 
+function isActiveEntry(entry: CollectionEntry) {
+  return entry.owned_count > 0 || entry.trade_count > 0 || entry.wanted || entry.priority > 0;
+}
+
+function cardLookupKey(cardNumber: string, subset: string) {
+  return `${cardNumber}|||${subset}`;
+}
+
 function App() {
   const [cards, setCards] = useState<Card[]>([]);
   const [collection, setCollection] = useState<Record<string, CollectionEntry>>(() =>
@@ -80,6 +100,8 @@ function App() {
   const [discordHandle, setDiscordHandle] = useState("");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [dbCardIds, setDbCardIds] = useState<Record<string, string>>({});
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
@@ -142,6 +164,118 @@ function App() {
       });
   }, [user]);
 
+  useEffect(() => {
+    if (!supabase || !user || cards.length === 0) return;
+
+    const client = supabase;
+    const currentUser = user;
+    let cancelled = false;
+
+    async function loadCloudCollection() {
+      setSyncMessage("Syncing collection...");
+      const cardByKey = new Map(cards.map((card) => [cardLookupKey(card.card_number, card.subset), card]));
+      const fallbackName = currentUser.email?.split("@")[0] ?? "Collector";
+
+      const { error: profileEnsureError } = await client
+        .from("hoops_profiles")
+        .upsert(
+          { id: currentUser.id, display_name: fallbackName },
+          { onConflict: "id", ignoreDuplicates: true },
+        );
+
+      if (cancelled) return;
+      if (profileEnsureError) {
+        setSyncMessage(`Profile sync error: ${profileEnsureError.message}`);
+        return;
+      }
+
+      const { data: dbCards, error: cardError } = await client
+        .from("hoops_cards")
+        .select("id, card_number, subset");
+
+      if (cancelled) return;
+      if (cardError) {
+        setSyncMessage(`Card sync error: ${cardError.message}`);
+        return;
+      }
+
+      const nextDbCardIds: Record<string, string> = {};
+      for (const dbCard of (dbCards ?? []) as DbCard[]) {
+        const clientCard = cardByKey.get(cardLookupKey(dbCard.card_number, dbCard.subset));
+        if (clientCard) nextDbCardIds[clientCard.id] = dbCard.id;
+      }
+      setDbCardIds(nextDbCardIds);
+
+      const { data: rows, error: collectionError } = await client
+        .from("hoops_user_cards")
+        .select("card_id, owned_count, trade_count, wanted, priority, hoops_cards(id, card_number, subset)")
+        .eq("user_id", currentUser.id);
+
+      if (cancelled) return;
+      if (collectionError) {
+        setSyncMessage(`Collection sync error: ${collectionError.message}`);
+        return;
+      }
+
+      const cloudCollection: Record<string, CollectionEntry> = {};
+      for (const row of (rows ?? []) as UserCardRow[]) {
+        const dbCard = Array.isArray(row.hoops_cards) ? row.hoops_cards[0] : row.hoops_cards;
+        if (!dbCard) continue;
+        const clientCard = cardByKey.get(cardLookupKey(dbCard.card_number, dbCard.subset));
+        if (!clientCard) continue;
+        cloudCollection[clientCard.id] = {
+          owned_count: row.owned_count,
+          trade_count: row.trade_count,
+          wanted: row.wanted,
+          priority: row.priority,
+        };
+      }
+
+      const migrationKey = `${CLOUD_MIGRATION_KEY}:${currentUser.id}`;
+      const localCollection = readStoredCollection();
+      const localRows = Object.entries(localCollection).filter(([, entry]) => isActiveEntry(entry));
+
+      if (!localStorage.getItem(migrationKey) && localRows.length > 0) {
+        const payload: Array<CollectionEntry & { user_id: string; card_id: string }> = [];
+        for (const [cardId, entry] of localRows) {
+          const dbCardId = nextDbCardIds[cardId];
+          if (!dbCardId) continue;
+          payload.push({
+            user_id: currentUser.id,
+            card_id: dbCardId,
+            owned_count: entry.owned_count,
+            trade_count: entry.trade_count,
+            wanted: entry.wanted,
+            priority: entry.priority,
+          });
+        }
+
+        if (payload.length > 0) {
+          const { error: migrationError } = await client.from("hoops_user_cards").upsert(payload);
+          if (cancelled) return;
+          if (migrationError) {
+            setSyncMessage(`Local migration error: ${migrationError.message}`);
+            return;
+          }
+        }
+
+        localStorage.setItem(migrationKey, "1");
+        setCollection({ ...cloudCollection, ...localCollection });
+        setSyncMessage("Local collection migrated to cloud.");
+        return;
+      }
+
+      setCollection(cloudCollection);
+      setSyncMessage("Cloud sync active.");
+    }
+
+    void loadCloudCollection();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cards, user]);
+
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(cards.map((card) => card.category))).sort()],
     [cards],
@@ -183,11 +317,39 @@ function App() {
     );
   }, [cards, collection]);
 
-  function updateCard(cardId: string, updater: (entry: CollectionEntry) => CollectionEntry) {
-    setCollection((current) => {
-      const nextEntry = updater(current[cardId] ?? emptyEntry());
-      return { ...current, [cardId]: nextEntry };
+  async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
+    if (!supabase || !user) return;
+    const dbCardId = dbCardIds[cardId];
+    if (!dbCardId) {
+      setSyncMessage("This card is not linked to Supabase yet.");
+      return;
+    }
+
+    if (!isActiveEntry(entry)) {
+      const { error: deleteError } = await supabase
+        .from("hoops_user_cards")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("card_id", dbCardId);
+      setSyncMessage(deleteError ? `Cloud delete error: ${deleteError.message}` : "Saved to cloud.");
+      return;
+    }
+
+    const { error: saveError } = await supabase.from("hoops_user_cards").upsert({
+      user_id: user.id,
+      card_id: dbCardId,
+      owned_count: entry.owned_count,
+      trade_count: entry.trade_count,
+      wanted: entry.wanted,
+      priority: entry.priority,
     });
+    setSyncMessage(saveError ? `Cloud save error: ${saveError.message}` : "Saved to cloud.");
+  }
+
+  function updateCard(cardId: string, updater: (entry: CollectionEntry) => CollectionEntry) {
+    const nextEntry = updater(collection[cardId] ?? emptyEntry());
+    setCollection((current) => ({ ...current, [cardId]: nextEntry }));
+    void persistCollectionEntry(cardId, nextEntry);
   }
 
   function exportCollection() {
@@ -317,6 +479,7 @@ function App() {
                 <span>
                   {profile?.display_name || user.email}
                   {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
+                  {syncMessage ? <small>{syncMessage}</small> : null}
                 </span>
                 <button type="button" onClick={() => supabase.auth.signOut()}>
                   Sign out
