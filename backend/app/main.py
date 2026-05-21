@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 CHECKLIST_PATH = ROOT / "data" / "checklists" / "2025-26-topps-nba-hoops-basketball-checklist.csv"
 
 
@@ -80,4 +80,3 @@ def metadata() -> dict[str, object]:
         "subsets": sorted({card.subset for card in records}),
         "teams": sorted({card.team_name for card in records}),
     }
-
