@@ -248,7 +248,48 @@ h1 {
 
 .account-form {
   display: grid;
-  grid-template-columns: auto minmax(150px, 1.1fr) minmax(130px, 0.9fr) minmax(130px, 0.8fr) minmax(120px, 0.8fr) auto auto;
+  grid-template-columns: minmax(190px, 0.8fr) minmax(320px, 1.6fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.account-form-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.account-form-header span,
+.account-fields label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-form-header strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.account-form-header small,
+.account-fields small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-fields {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.2fr) minmax(140px, 0.9fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr);
+  gap: 8px;
+}
+
+.account-actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
 }
 
 .account-line span {
@@ -265,6 +306,14 @@ h1 {
 .account-form input,
 .profile-form input {
   min-width: 0;
+}
+
+.account-form input {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0 11px;
 }
 
 .profile-form input {
@@ -292,7 +341,7 @@ h1 {
 }
 
 .account-message {
-  min-width: min(100%, 280px);
+  grid-column: 2 / -1;
   color: var(--accent-light);
   font-size: 12px;
   line-height: 1.35;
@@ -571,6 +620,8 @@ td:nth-child(2) {
   .toolbar,
   .account-strip,
   .account-form,
+  .account-fields,
+  .account-actions,
   .account-line,
   .profile-form {
     align-items: stretch;
@@ -614,6 +665,10 @@ td:nth-child(2) {
 
   .account-form-icon {
     display: none;
+  }
+
+  .account-message {
+    grid-column: auto;
   }
 
   .icon-button.labeled {

@@ -596,46 +596,68 @@ function App() {
             </div>
           ) : (
             <form className="account-form" onSubmit={submitLogin}>
-              <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
-              <input
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email"
-                required
-                type="email"
-              />
-              <input
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Mot de passe"
-                required
-                type="password"
-              />
-              <input
-                autoComplete="nickname"
-                value={signupName}
-                onChange={(event) => setSignupName(event.target.value)}
-                placeholder="Pseudo public"
-                type="text"
-              />
-              <input
-                value={signupDiscord}
-                onChange={(event) => setSignupDiscord(event.target.value)}
-                placeholder="Discord"
-                type="text"
-              />
-              <button disabled={isAuthenticating} type="submit">
-                {isAuthenticating ? "..." : "Se connecter"}
-              </button>
-              <button
-                disabled={isAuthenticating}
-                onClick={() => void authenticate("signup")}
-                type="button"
-              >
-                Creer le compte
-              </button>
+              <div className="account-form-header">
+                <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
+                <span>
+                  <strong>Connexion collectionneur</strong>
+                  <small>Email, mot de passe et Discord pour les trades.</small>
+                </span>
+              </div>
+              <div className="account-fields">
+                <label>
+                  <small>Email</small>
+                  <input
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="collector@email.com"
+                    required
+                    type="email"
+                  />
+                </label>
+                <label>
+                  <small>Mot de passe</small>
+                  <input
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Minimum 6 caracteres"
+                    required
+                    type="password"
+                  />
+                </label>
+                <label>
+                  <small>Pseudo public</small>
+                  <input
+                    autoComplete="nickname"
+                    value={signupName}
+                    onChange={(event) => setSignupName(event.target.value)}
+                    placeholder="Ex: Fyrex"
+                    type="text"
+                  />
+                </label>
+                <label>
+                  <small>Discord</small>
+                  <input
+                    value={signupDiscord}
+                    onChange={(event) => setSignupDiscord(event.target.value)}
+                    placeholder="pseudo Discord"
+                    type="text"
+                  />
+                </label>
+              </div>
+              <div className="account-actions">
+                <button disabled={isAuthenticating} type="submit">
+                  {isAuthenticating ? "..." : "Se connecter"}
+                </button>
+                <button
+                  disabled={isAuthenticating}
+                  onClick={() => void authenticate("signup")}
+                  type="button"
+                >
+                  Creer le compte
+                </button>
+              </div>
               {authMessage ? <span className="account-message">{authMessage}</span> : null}
             </form>
           )
