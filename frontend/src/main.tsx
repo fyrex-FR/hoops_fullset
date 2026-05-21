@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import {
+  Check,
   Download,
   Heart,
   LogIn,
@@ -359,6 +360,17 @@ function App() {
     void persistCollectionEntry(cardId, nextEntry);
   }
 
+  function toggleOwned(cardId: string) {
+    updateCard(cardId, (current) => {
+      const owned = current.owned_count > 0;
+      return {
+        ...current,
+        owned_count: owned ? 0 : 1,
+        trade_count: owned ? 0 : current.trade_count,
+      };
+    });
+  }
+
   function exportCollection() {
     const rows = cards
       .map((card) => ({ card, entry: collection[card.id] ?? emptyEntry() }))
@@ -542,15 +554,15 @@ function App() {
       <section className="collection-bar" aria-label="Collection progress">
         <div>
           <strong>{totals.owned}</strong>
-          <span>owned</span>
+          <span>je l'ai</span>
         </div>
         <div>
           <strong>{totals.wanted}</strong>
-          <span>wanted</span>
+          <span>recherche</span>
         </div>
         <div>
           <strong>{totals.trade}</strong>
-          <span>for trade</span>
+          <span>a l'echange</span>
         </div>
         <button className="icon-button labeled" onClick={exportCollection} type="button">
           <Download size={17} />
@@ -706,7 +718,13 @@ function App() {
             onClick={() => setViewMode(mode)}
             type="button"
           >
-            {mode === "all" ? "All cards" : mode === "trade" ? "For trade" : mode}
+            {mode === "all"
+              ? "Toutes"
+              : mode === "owned"
+                ? "Je l'ai"
+                : mode === "wanted"
+                  ? "Recherche"
+                  : "A l'echange"}
           </button>
         ))}
       </section>
@@ -726,8 +744,8 @@ function App() {
                   <th>Team</th>
                   <th>Subset</th>
                   <th>Type</th>
-                  <th>Owned</th>
-                  <th>Trade</th>
+                  <th>Je l'ai</th>
+                  <th>Echange</th>
                   <th>Want</th>
                   <th>Priority</th>
                 </tr>
@@ -745,37 +763,15 @@ function App() {
                         <span className="pill">{card.category}</span>
                       </td>
                       <td>
-                        <div className="stepper">
-                          <button
-                            aria-label="Decrease owned"
-                            onClick={() =>
-                              updateCard(card.id, (current) => {
-                                const owned_count = Math.max(0, current.owned_count - 1);
-                                return {
-                                  ...current,
-                                  owned_count,
-                                  trade_count: Math.min(current.trade_count, owned_count),
-                                };
-                              })
-                            }
-                            type="button"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span>{entry.owned_count}</span>
-                          <button
-                            aria-label="Increase owned"
-                            onClick={() =>
-                              updateCard(card.id, (current) => ({
-                                ...current,
-                                owned_count: current.owned_count + 1,
-                              }))
-                            }
-                            type="button"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
+                        <button
+                          className={`check-button ${entry.owned_count > 0 ? "selected" : ""}`}
+                          aria-pressed={entry.owned_count > 0}
+                          aria-label={entry.owned_count > 0 ? "Mark as not owned" : "Mark as owned"}
+                          onClick={() => toggleOwned(card.id)}
+                          type="button"
+                        >
+                          <Check size={16} />
+                        </button>
                       </td>
                       <td>
                         <div className="stepper">
@@ -795,14 +791,11 @@ function App() {
                           <button
                             aria-label="Increase trade count"
                             onClick={() =>
-                              updateCard(card.id, (current) => {
-                                const owned_count = Math.max(current.owned_count, current.trade_count + 1);
-                                return {
-                                  ...current,
-                                  owned_count,
-                                  trade_count: current.trade_count + 1,
-                                };
-                              })
+                              updateCard(card.id, (current) => ({
+                                ...current,
+                                owned_count: Math.max(current.owned_count, 1),
+                                trade_count: current.trade_count + 1,
+                              }))
                             }
                             type="button"
                           >
@@ -861,42 +854,21 @@ function App() {
 
                     <div className="mobile-actions">
                       <label>
-                        <small>Owned</small>
-                        <div className="stepper">
-                          <button
-                            aria-label="Decrease owned"
-                            onClick={() =>
-                              updateCard(card.id, (current) => {
-                                const owned_count = Math.max(0, current.owned_count - 1);
-                                return {
-                                  ...current,
-                                  owned_count,
-                                  trade_count: Math.min(current.trade_count, owned_count),
-                                };
-                              })
-                            }
-                            type="button"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span>{entry.owned_count}</span>
-                          <button
-                            aria-label="Increase owned"
-                            onClick={() =>
-                              updateCard(card.id, (current) => ({
-                                ...current,
-                                owned_count: current.owned_count + 1,
-                              }))
-                            }
-                            type="button"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
+                        <small>Je l'ai</small>
+                        <button
+                          className={`check-button ${entry.owned_count > 0 ? "selected" : ""}`}
+                          aria-pressed={entry.owned_count > 0}
+                          aria-label={entry.owned_count > 0 ? "Mark as not owned" : "Mark as owned"}
+                          onClick={() => toggleOwned(card.id)}
+                          type="button"
+                        >
+                          <Check size={16} />
+                          {entry.owned_count > 0 ? "Oui" : "Non"}
+                        </button>
                       </label>
 
                       <label>
-                        <small>Trade</small>
+                        <small>A l'echange</small>
                         <div className="stepper">
                           <button
                             aria-label="Decrease trade count"
@@ -914,14 +886,11 @@ function App() {
                           <button
                             aria-label="Increase trade count"
                             onClick={() =>
-                              updateCard(card.id, (current) => {
-                                const owned_count = Math.max(current.owned_count, current.trade_count + 1);
-                                return {
-                                  ...current,
-                                  owned_count,
-                                  trade_count: current.trade_count + 1,
-                                };
-                              })
+                              updateCard(card.id, (current) => ({
+                                ...current,
+                                owned_count: Math.max(current.owned_count, 1),
+                                trade_count: current.trade_count + 1,
+                              }))
                             }
                             type="button"
                           >

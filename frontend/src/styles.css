@@ -530,6 +530,7 @@ td:nth-child(2) {
 
 .stepper button,
 .icon-button,
+.check-button,
 .priority {
   border: 0;
   background: transparent;
@@ -555,6 +556,7 @@ td:nth-child(2) {
 }
 
 .icon-button,
+.check-button,
 .priority {
   min-height: 34px;
   display: inline-flex;
@@ -569,9 +571,16 @@ td:nth-child(2) {
 }
 
 .icon-button:hover,
+.check-button:hover,
 .priority:hover {
   border-color: var(--border-accent);
   background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.check-button.selected {
+  border-color: var(--border-accent);
+  background: var(--accent-dim);
   color: var(--accent);
 }
 
@@ -799,6 +808,7 @@ td:nth-child(2) {
   }
 
   .mobile-actions .stepper,
+  .mobile-actions .check-button,
   .mobile-actions .icon-button,
   .mobile-actions .priority {
     width: 100%;
@@ -810,6 +820,7 @@ td:nth-child(2) {
   }
 
   .mobile-actions .icon-button,
+  .mobile-actions .check-button,
   .mobile-actions .priority {
     font-size: 13px;
     font-weight: 900;
