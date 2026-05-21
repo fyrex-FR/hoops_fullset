@@ -123,6 +123,16 @@ th {
   font-weight: 700;
 }
 
+.state {
+  margin: 0;
+  padding: 18px;
+  color: #344054;
+}
+
+.state-error {
+  color: #b42318;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .toolbar {
@@ -138,4 +148,3 @@ th {
     width: 100%;
   }
 }
-

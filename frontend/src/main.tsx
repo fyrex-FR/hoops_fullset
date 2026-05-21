@@ -12,18 +12,32 @@ type Card = {
   team_name: string;
 };
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? "https://api-fullset.cardvaults.app";
 
 function App() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
-      .then((response) => response.json())
-      .then(setCards)
-      .catch(() => setCards([]));
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((records: Card[]) => {
+        setCards(records);
+        setError(null);
+      })
+      .catch((requestError: Error) => {
+        setCards([]);
+        setError(requestError.message);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const categories = useMemo(
@@ -84,30 +98,36 @@ function App() {
       </section>
 
       <section className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Player</th>
-              <th>Team</th>
-              <th>Subset</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCards.map((card) => (
-              <tr key={card.id}>
-                <td className="number">{card.card_number}</td>
-                <td>{card.player_name}</td>
-                <td>{card.team_name}</td>
-                <td>{card.subset}</td>
-                <td>
-                  <span className="pill">{card.category}</span>
-                </td>
+        {isLoading ? (
+          <p className="state">Loading checklist...</p>
+        ) : error ? (
+          <p className="state state-error">Could not load checklist: {error}</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Player</th>
+                <th>Team</th>
+                <th>Subset</th>
+                <th>Type</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredCards.map((card) => (
+                <tr key={card.id}>
+                  <td className="number">{card.card_number}</td>
+                  <td>{card.player_name}</td>
+                  <td>{card.team_name}</td>
+                  <td>{card.subset}</td>
+                  <td>
+                    <span className="pill">{card.category}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </main>
   );
@@ -118,4 +138,3 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>,
 );
-
