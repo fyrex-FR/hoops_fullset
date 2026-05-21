@@ -12,6 +12,17 @@ Web app to track the `2025-26 Topps NBA Hoops Basketball` full set and find trad
 
 Current checklist count: 1041 cards.
 
+## Supabase strategy
+
+This app is designed to reuse an existing Supabase project instead of requiring a dedicated project. All database tables are prefixed with `hoops_` to avoid collisions with the collection/catalog apps:
+
+- `hoops_card_sets`
+- `hoops_cards`
+- `hoops_profiles`
+- `hoops_user_cards`
+
+That keeps auth and quotas shared while leaving the Hoops data model isolated.
+
 ## Local development
 
 Backend:
@@ -54,4 +65,3 @@ The first useful version should support:
   - a simple compatibility score.
 
 Messaging is intentionally out of V1. A clear match page plus contact link is enough to prove the product.
-
