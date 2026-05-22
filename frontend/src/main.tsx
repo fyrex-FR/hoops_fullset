@@ -1077,41 +1077,43 @@ function App() {
       </section>
 
       <section className="collection-bar" aria-label="Collection progress">
-        <div>
+        <div className="collection-stat">
           <strong>{totals.owned}</strong>
           <span>Je l'ai</span>
         </div>
-        <div>
+        <div className="collection-stat">
           <strong>{totals.wanted}</strong>
           <span>Recherche</span>
         </div>
-        <div>
+        <div className="collection-stat">
           <strong>{totals.trade}</strong>
           <span>A l'echange</span>
         </div>
-        <input
-          ref={importInputRef}
-          className="hidden-file-input"
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0] ?? null;
-            void importCollection(file);
-            event.currentTarget.value = "";
-          }}
-        />
-        <button
-          className="icon-button labeled"
-          onClick={() => importInputRef.current?.click()}
-          type="button"
-        >
-          <Upload size={17} />
-          Import
-        </button>
-        <button className="icon-button labeled" onClick={exportCollection} type="button">
-          <Download size={17} />
-          Export
-        </button>
+        <div className="collection-actions">
+          <input
+            ref={importInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0] ?? null;
+              void importCollection(file);
+              event.currentTarget.value = "";
+            }}
+          />
+          <button
+            className="icon-button labeled"
+            onClick={() => importInputRef.current?.click()}
+            type="button"
+          >
+            <Upload size={17} />
+            Import
+          </button>
+          <button className="icon-button labeled" onClick={exportCollection} type="button">
+            <Download size={17} />
+            Export
+          </button>
+        </div>
       </section>
 
       <section className="progress-section" aria-label="Progression">
