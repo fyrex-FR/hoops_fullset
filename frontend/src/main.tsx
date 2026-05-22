@@ -136,6 +136,13 @@ function isActiveEntry(entry: CollectionEntry) {
   return entry.owned_count > 0 || entry.trade_count > 0 || entry.wanted || entry.priority > 0;
 }
 
+function normalizeEntry(entry: CollectionEntry): CollectionEntry {
+  return {
+    ...entry,
+    owned_count: Math.max(entry.owned_count, entry.trade_count),
+  };
+}
+
 function cardLookupKey(cardNumber: string, subset: string) {
   return `${cardNumber}|||${subset}`;
 }
@@ -385,10 +392,7 @@ function App() {
           payload.push({
             user_id: currentUser.id,
             card_id: dbCardId,
-            owned_count: entry.owned_count,
-            trade_count: entry.trade_count,
-            wanted: entry.wanted,
-            priority: entry.priority,
+            ...normalizeEntry(entry),
           });
         }
 
@@ -661,13 +665,14 @@ function App() {
 
   async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
     if (!supabase || !user) return;
+    const normalizedEntry = normalizeEntry(entry);
     const dbCardId = dbCardIds[cardId];
     if (!dbCardId) {
       setSyncMessage("Non sauvegarde: cette carte n'est pas liee a hoops_cards.");
       return;
     }
 
-    if (!isActiveEntry(entry)) {
+    if (!isActiveEntry(normalizedEntry)) {
       const { error: deleteError } = await supabase
         .from("hoops_user_cards")
         .delete()
@@ -680,16 +685,16 @@ function App() {
     const { error: saveError } = await supabase.from("hoops_user_cards").upsert({
       user_id: user.id,
       card_id: dbCardId,
-      owned_count: entry.owned_count,
-      trade_count: entry.trade_count,
-      wanted: entry.wanted,
-      priority: entry.priority,
+      owned_count: normalizedEntry.owned_count,
+      trade_count: normalizedEntry.trade_count,
+      wanted: normalizedEntry.wanted,
+      priority: normalizedEntry.priority,
     });
     setSyncMessage(saveError ? `Erreur sauvegarde cloud: ${saveError.message}` : "Sauvegarde cloud OK.");
   }
 
   function updateCard(cardId: string, updater: (entry: CollectionEntry) => CollectionEntry) {
-    const nextEntry = updater(collection[cardId] ?? emptyEntry());
+    const nextEntry = normalizeEntry(updater(collection[cardId] ?? emptyEntry()));
     setCollection((current) => ({ ...current, [cardId]: nextEntry }));
     void persistCollectionEntry(cardId, nextEntry);
   }
@@ -775,10 +780,7 @@ function App() {
       payload.push({
         user_id: user.id,
         card_id: dbCardId,
-        owned_count: entry.owned_count,
-        trade_count: entry.trade_count,
-        wanted: entry.wanted,
-        priority: entry.priority,
+        ...normalizeEntry(entry),
       });
     }
 
@@ -839,12 +841,12 @@ function App() {
           continue;
         }
 
-        const entry: CollectionEntry = {
+        const entry = normalizeEntry({
           owned_count: parseCount(cells[ownedIndex], 99),
           trade_count: parseCount(cells[tradeIndex], 99),
           wanted: parseWanted(cells[wantedIndex]),
           priority: parseCount(cells[priorityIndex], 5),
-        };
+        });
         imported[card.id] = entry;
         matchedRows += 1;
       }
