@@ -5,7 +5,6 @@ import {
   Check,
   Download,
   Heart,
-  LogIn,
   Minus,
   Plus,
   Search,
@@ -334,22 +333,36 @@ function App() {
     );
   }, [cards, collection]);
 
-  const subsetProgress = useMemo(() => {
-    const progress = new Map<string, { owned: number; total: number }>();
+  const categoryProgress = useMemo(() => {
+    const labels: Record<string, string> = {
+      Autographs: "Autos",
+      Base: "Base",
+      Inserts: "Inserts",
+    };
+    const order = ["Base", "Inserts", "Autographs"];
+    const progress = new Map<string, { label: string; owned: number; total: number }>();
     for (const card of cards) {
-      const current = progress.get(card.subset) ?? { owned: 0, total: 0 };
+      const current = progress.get(card.category) ?? {
+        label: labels[card.category] ?? card.category,
+        owned: 0,
+        total: 0,
+      };
       current.total += 1;
       if ((collection[card.id] ?? emptyEntry()).owned_count > 0) current.owned += 1;
-      progress.set(card.subset, current);
+      progress.set(card.category, current);
     }
 
     return Array.from(progress.entries())
-      .map(([subset, value]) => ({
-        subset,
+      .map(([categoryName, value]) => ({
+        categoryName,
         ...value,
         percent: value.total > 0 ? Math.round((value.owned / value.total) * 100) : 0,
       }))
-      .sort((a, b) => b.total - a.total || a.subset.localeCompare(b.subset));
+      .sort((a, b) => {
+        const aIndex = order.indexOf(a.categoryName);
+        const bIndex = order.indexOf(b.categoryName);
+        return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+      });
   }, [cards, collection]);
 
   async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
@@ -570,11 +583,127 @@ function App() {
           <p className="eyebrow">Checklist</p>
           <h1>Suivi full set</h1>
         </div>
-        <div className="stats" aria-label="Checklist stats">
-          <span>{cards.length} cartes</span>
-          <span>{baseCount} base</span>
-          <span>{insertCount} inserts</span>
-          <span>{autoCount} autos</span>
+        <div className="topbar-actions">
+          <div className="stats" aria-label="Checklist stats">
+            <span>{cards.length} cartes</span>
+            <span>{baseCount} base</span>
+            <span>{insertCount} inserts</span>
+            <span>{autoCount} autos</span>
+          </div>
+          <section className="account-menu" aria-label="Account">
+            <button
+              className="account-title"
+              type="button"
+              onClick={() => setIsAccountOpen((current) => !current)}
+              aria-expanded={isAccountOpen}
+            >
+              <UserIcon size={17} />
+              <span>{user ? profile?.display_name || user.email : "Compte"}</span>
+            </button>
+            {supabase ? (
+              user ? (
+                <div className={`account-panel ${isAccountOpen ? "open" : ""}`}>
+                  <div className="account-line">
+                    <UserIcon size={17} />
+                    <span>
+                      {profile?.display_name || user.email}
+                      {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
+                      {syncMessage ? <small>{syncMessage}</small> : null}
+                    </span>
+                    <button type="button" onClick={() => supabase.auth.signOut()}>
+                      Sign out
+                    </button>
+                  </div>
+                  <form className="profile-form" onSubmit={saveProfile}>
+                    <input
+                      value={profileName}
+                      onChange={(event) => setProfileName(event.target.value)}
+                      placeholder="Public username"
+                      type="text"
+                    />
+                    <input
+                      value={discordHandle}
+                      onChange={(event) => setDiscordHandle(event.target.value)}
+                      placeholder="Discord username"
+                      type="text"
+                    />
+                    <button disabled={isSavingProfile} type="submit">
+                      {isSavingProfile ? "Saving..." : "Save profile"}
+                    </button>
+                    {profileMessage ? <span>{profileMessage}</span> : null}
+                  </form>
+                </div>
+              ) : (
+                <form className={`account-form ${isAccountOpen ? "open" : ""}`} onSubmit={submitLogin}>
+                  <div className="account-form-header">
+                    <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
+                    <span>
+                      <strong>Compte collectionneur</strong>
+                      <small>Email, mot de passe et Discord pour les echanges.</small>
+                    </span>
+                  </div>
+                  <div className="account-fields">
+                    <label>
+                      <small>Email</small>
+                      <input
+                        autoComplete="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="collector@email.com"
+                        required
+                        type="email"
+                      />
+                    </label>
+                    <label>
+                      <small>Mot de passe</small>
+                      <input
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Minimum 6 caracteres"
+                        required
+                        type="password"
+                      />
+                    </label>
+                    <label>
+                      <small>Pseudo public</small>
+                      <input
+                        autoComplete="nickname"
+                        value={signupName}
+                        onChange={(event) => setSignupName(event.target.value)}
+                        placeholder="Ex: Fyrex"
+                        type="text"
+                      />
+                    </label>
+                    <label>
+                      <small>Discord</small>
+                      <input
+                        value={signupDiscord}
+                        onChange={(event) => setSignupDiscord(event.target.value)}
+                        placeholder="pseudo Discord"
+                        type="text"
+                      />
+                    </label>
+                  </div>
+                  <div className="account-actions">
+                    <button disabled={isAuthenticating} type="submit">
+                      {isAuthenticating ? "..." : "Se connecter"}
+                    </button>
+                    <button
+                      disabled={isAuthenticating}
+                      onClick={() => void authenticate("signup")}
+                      type="button"
+                    >
+                      Creer le compte
+                    </button>
+                  </div>
+                  {authMessage ? <span className="account-message">{authMessage}</span> : null}
+                </form>
+              )
+            ) : (
+              <span className="account-local">Local</span>
+            )}
+          </section>
         </div>
       </section>
 
@@ -604,143 +733,22 @@ function App() {
           onClick={() => setIsSubsetProgressOpen((current) => !current)}
           aria-expanded={isSubsetProgressOpen}
         >
-          <span>Progression par subset</span>
-          <strong>{subsetProgress.filter((item) => item.percent === 100).length}/{subsetProgress.length}</strong>
+          <span>Progression</span>
+          <strong>{isSubsetProgressOpen ? "Masquer" : "Afficher"}</strong>
         </button>
-        <div className={`subset-progress ${isSubsetProgressOpen ? "open" : ""}`}>
-          {subsetProgress.map((item) => (
-            <div className="subset-progress-item" key={item.subset}>
+        <div className={`category-progress ${isSubsetProgressOpen ? "open" : ""}`}>
+          {categoryProgress.map((item) => (
+            <div className="category-progress-item" key={item.categoryName}>
               <div>
-                <strong>{item.subset}</strong>
+                <strong>{item.label}</strong>
                 <span>
                   {item.owned}/{item.total} - {item.percent}%
                 </span>
               </div>
-              <meter min="0" max={item.total} value={item.owned} aria-label={`${item.subset} progress`} />
+              <meter min="0" max={item.total} value={item.owned} aria-label={`${item.label} progress`} />
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="account-strip" aria-label="Account">
-        <button
-          className="account-title"
-          type="button"
-          onClick={() => setIsAccountOpen((current) => !current)}
-          aria-expanded={isAccountOpen}
-        >
-          <UserIcon size={17} />
-          <span>{user ? profile?.display_name || user.email : "Compte"}</span>
-        </button>
-        {supabase ? (
-          user ? (
-            <div className={`account-panel ${isAccountOpen ? "open" : ""}`}>
-              <div className="account-line">
-                <UserIcon size={17} />
-                <span>
-                  {profile?.display_name || user.email}
-                  {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
-                  {syncMessage ? <small>{syncMessage}</small> : null}
-                </span>
-                <button type="button" onClick={() => supabase.auth.signOut()}>
-                  Sign out
-                </button>
-              </div>
-              <form className="profile-form" onSubmit={saveProfile}>
-                <input
-                  value={profileName}
-                  onChange={(event) => setProfileName(event.target.value)}
-                  placeholder="Public username"
-                  type="text"
-                />
-                <input
-                  value={discordHandle}
-                  onChange={(event) => setDiscordHandle(event.target.value)}
-                  placeholder="Discord username"
-                  type="text"
-                />
-                <button disabled={isSavingProfile} type="submit">
-                  {isSavingProfile ? "Saving..." : "Save profile"}
-                </button>
-                {profileMessage ? <span>{profileMessage}</span> : null}
-              </form>
-            </div>
-          ) : (
-            <form className={`account-form ${isAccountOpen ? "open" : ""}`} onSubmit={submitLogin}>
-              <div className="account-form-header">
-                <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
-                <span>
-                  <strong>Compte collectionneur</strong>
-                  <small>Email, mot de passe et Discord pour les echanges.</small>
-                </span>
-              </div>
-              <div className="account-fields">
-                <label>
-                  <small>Email</small>
-                  <input
-                    autoComplete="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="collector@email.com"
-                    required
-                    type="email"
-                  />
-                </label>
-                <label>
-                  <small>Mot de passe</small>
-                  <input
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Minimum 6 caracteres"
-                    required
-                    type="password"
-                  />
-                </label>
-                <label>
-                  <small>Pseudo public</small>
-                  <input
-                    autoComplete="nickname"
-                    value={signupName}
-                    onChange={(event) => setSignupName(event.target.value)}
-                    placeholder="Ex: Fyrex"
-                    type="text"
-                  />
-                </label>
-                <label>
-                  <small>Discord</small>
-                  <input
-                    value={signupDiscord}
-                    onChange={(event) => setSignupDiscord(event.target.value)}
-                    placeholder="pseudo Discord"
-                    type="text"
-                  />
-                </label>
-              </div>
-              <div className="account-actions">
-                <button disabled={isAuthenticating} type="submit">
-                  {isAuthenticating ? "..." : "Se connecter"}
-                </button>
-                <button
-                  disabled={isAuthenticating}
-                  onClick={() => void authenticate("signup")}
-                  type="button"
-                >
-                  Creer le compte
-                </button>
-              </div>
-              {authMessage ? <span className="account-message">{authMessage}</span> : null}
-            </form>
-          )
-        ) : (
-          <span>Compte local. Sync cloud inactive.</span>
-        )}
-        {!user && !isAccountOpen ? (
-          <button className="account-cta" type="button" onClick={() => setIsAccountOpen(true)}>
-            <LogIn size={16} />
-            Connexion / inscription
-          </button>
-        ) : null}
       </section>
 
       <section className="toolbar" aria-label="Filters">

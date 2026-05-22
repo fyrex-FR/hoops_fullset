@@ -155,6 +155,14 @@ h1 {
   justify-content: flex-end;
 }
 
+.topbar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .stats span,
 .pill {
   min-height: 30px;
@@ -191,7 +199,7 @@ h1 {
 }
 
 .collection-bar span,
-.account-strip {
+.account-menu {
   color: var(--text-secondary);
   font-size: 13px;
 }
@@ -201,16 +209,37 @@ h1 {
 }
 
 .progress-toggle {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(20, 20, 23, 0.82);
+  color: var(--text-primary);
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.progress-toggle strong {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.category-progress {
   display: none;
-}
-
-.subset-progress {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
   gap: 8px;
+  margin-top: 8px;
 }
 
-.subset-progress-item {
+.category-progress.open {
+  display: grid;
+}
+
+.category-progress-item {
   display: grid;
   gap: 8px;
   border: 1px solid var(--border);
@@ -219,14 +248,14 @@ h1 {
   padding: 11px 12px;
 }
 
-.subset-progress-item div {
+.category-progress-item div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
 }
 
-.subset-progress-item strong {
+.category-progress-item strong {
   min-width: 0;
   overflow: hidden;
   color: var(--text-primary);
@@ -236,14 +265,14 @@ h1 {
   white-space: nowrap;
 }
 
-.subset-progress-item span {
+.category-progress-item span {
   flex: 0 0 auto;
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.subset-progress-item meter {
+.category-progress-item meter {
   width: 100%;
   height: 8px;
   overflow: hidden;
@@ -252,34 +281,27 @@ h1 {
   background: var(--bg-secondary);
 }
 
-.subset-progress-item meter::-webkit-meter-bar {
+.category-progress-item meter::-webkit-meter-bar {
   border: 0;
   border-radius: 999px;
   background: var(--bg-secondary);
 }
 
-.subset-progress-item meter::-webkit-meter-optimum-value {
+.category-progress-item meter::-webkit-meter-optimum-value {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), var(--accent-light));
 }
 
-.subset-progress-item meter::-moz-meter-bar {
+.category-progress-item meter::-moz-meter-bar {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), var(--accent-light));
 }
 
-.account-strip {
+.account-menu {
   position: relative;
-  min-height: 46px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(20, 20, 23, 0.72);
-  margin-bottom: 12px;
-  padding: 9px 12px;
+  flex: 0 0 auto;
 }
 
 .account-title {
@@ -288,13 +310,26 @@ h1 {
   align-items: center;
   gap: 7px;
   min-height: 36px;
-  border: 0;
-  border-right: 1px solid var(--border);
-  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-elevated);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 900;
-  padding-right: 12px;
+  padding: 0 12px;
+}
+
+.account-local {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
 }
 
 .account-title svg,
@@ -334,9 +369,9 @@ h1 {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  left: 0;
   z-index: 30;
   display: grid;
+  width: min(820px, calc(100vw - 28px));
   border: 1px solid var(--border-strong);
   border-radius: 14px;
   background: rgba(14, 14, 17, 0.98);
@@ -383,24 +418,6 @@ h1 {
   gap: 8px;
 }
 
-.account-cta {
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.account-cta svg {
-  color: var(--accent);
-}
-
 .account-line span {
   display: grid;
   gap: 2px;
@@ -431,7 +448,6 @@ h1 {
 
 .account-form button,
 .account-line button,
-.account-cta,
 .profile-form button,
 .view-tabs button {
   min-height: 38px;
@@ -459,7 +475,6 @@ h1 {
 
 .account-form button:hover,
 .account-line button:hover,
-.account-cta:hover,
 .profile-form button:hover,
 .view-tabs button:hover {
   background: var(--bg-hover);
@@ -775,6 +790,11 @@ td:nth-child(9) {
     align-items: start;
   }
 
+  .topbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .stats {
     justify-content: flex-start;
   }
@@ -805,9 +825,7 @@ td:nth-child(9) {
   .account-title {
     width: auto;
     justify-content: flex-start;
-    border-right: 1px solid var(--border);
-    border-bottom: 0;
-    padding: 0 12px 0 0;
+    padding: 0 12px;
   }
 
   .topbar {
@@ -820,6 +838,32 @@ td:nth-child(9) {
 
   .brand {
     min-width: 0;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stats {
+    min-width: 0;
+  }
+
+  .stats span {
+    min-height: 28px;
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .account-title span {
+    display: none;
+  }
+
+  .account-panel.open,
+  .account-form.open {
+    width: calc(100vw - 20px);
   }
 
   .collection-bar div {
@@ -845,12 +889,6 @@ td:nth-child(9) {
     grid-column: auto;
   }
 
-  .account-cta {
-    flex: 1 1 auto;
-    justify-content: center;
-    min-width: 0;
-  }
-
   .icon-button.labeled {
     width: 100%;
     margin-left: 0;
@@ -862,32 +900,9 @@ td:nth-child(9) {
 
   .progress-toggle {
     width: 100%;
-    min-height: 46px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: rgba(20, 20, 23, 0.82);
-    color: var(--text-primary);
-    padding: 0 13px;
-    font-size: 13px;
-    font-weight: 900;
   }
 
-  .progress-toggle strong {
-    color: var(--accent);
-    font-size: 12px;
-  }
-
-  .subset-progress {
-    display: none;
-    margin-top: 8px;
-  }
-
-  .subset-progress.open {
-    display: grid;
+  .category-progress.open {
     grid-template-columns: 1fr;
   }
 
