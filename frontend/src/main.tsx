@@ -114,6 +114,7 @@ function App() {
   const [dbCardIds, setDbCardIds] = useState<Record<string, string>>({});
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isSubsetProgressOpen, setIsSubsetProgressOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
@@ -184,7 +185,7 @@ function App() {
     let cancelled = false;
 
     async function loadCloudCollection() {
-      setSyncMessage("Syncing collection...");
+      setSyncMessage("Synchronisation...");
       const cardByKey = new Map(cards.map((card) => [cardLookupKey(card.card_number, card.subset), card]));
       const fallbackName = currentUser.email?.split("@")[0] ?? "Collector";
 
@@ -197,7 +198,7 @@ function App() {
 
       if (cancelled) return;
       if (profileEnsureError) {
-        setSyncMessage(`Profile sync error: ${profileEnsureError.message}`);
+        setSyncMessage(`Erreur profil: ${profileEnsureError.message}`);
         return;
       }
 
@@ -207,7 +208,7 @@ function App() {
 
       if (cancelled) return;
       if (cardError) {
-        setSyncMessage(`Card sync error: ${cardError.message}`);
+        setSyncMessage(`Erreur cartes: ${cardError.message}`);
         return;
       }
 
@@ -225,7 +226,7 @@ function App() {
 
       if (cancelled) return;
       if (collectionError) {
-        setSyncMessage(`Collection sync error: ${collectionError.message}`);
+        setSyncMessage(`Erreur collection: ${collectionError.message}`);
         return;
       }
 
@@ -266,19 +267,19 @@ function App() {
           const { error: migrationError } = await client.from("hoops_user_cards").upsert(payload);
           if (cancelled) return;
           if (migrationError) {
-            setSyncMessage(`Local migration error: ${migrationError.message}`);
+            setSyncMessage(`Erreur migration locale: ${migrationError.message}`);
             return;
           }
         }
 
         localStorage.setItem(migrationKey, "1");
         setCollection({ ...cloudCollection, ...localCollection });
-        setSyncMessage("Local collection migrated to cloud.");
+        setSyncMessage("Collection locale migree dans le cloud.");
         return;
       }
 
       setCollection(cloudCollection);
-      setSyncMessage("Cloud sync active.");
+      setSyncMessage("Sync cloud active.");
     }
 
     void loadCloudCollection();
@@ -355,7 +356,7 @@ function App() {
     if (!supabase || !user) return;
     const dbCardId = dbCardIds[cardId];
     if (!dbCardId) {
-      setSyncMessage("This card is not linked to Supabase yet.");
+      setSyncMessage("Cette carte n'est pas encore liee a Supabase.");
       return;
     }
 
@@ -365,7 +366,7 @@ function App() {
         .delete()
         .eq("user_id", user.id)
         .eq("card_id", dbCardId);
-      setSyncMessage(deleteError ? `Cloud delete error: ${deleteError.message}` : "Saved to cloud.");
+      setSyncMessage(deleteError ? `Erreur suppression cloud: ${deleteError.message}` : "Sauvegarde cloud OK.");
       return;
     }
 
@@ -377,7 +378,7 @@ function App() {
       wanted: entry.wanted,
       priority: entry.priority,
     });
-    setSyncMessage(saveError ? `Cloud save error: ${saveError.message}` : "Saved to cloud.");
+    setSyncMessage(saveError ? `Erreur sauvegarde cloud: ${saveError.message}` : "Sauvegarde cloud OK.");
   }
 
   function updateCard(cardId: string, updater: (entry: CollectionEntry) => CollectionEntry) {
@@ -525,7 +526,7 @@ function App() {
     const displayName = profileName.trim();
     const discord = discordHandle.trim();
     if (!displayName) {
-      setProfileMessage("Choose a public username.");
+      setProfileMessage("Choisis un pseudo public.");
       return;
     }
 
@@ -548,7 +549,7 @@ function App() {
     }
 
     setProfile(data);
-    setProfileMessage("Profile saved.");
+    setProfileMessage("Profil sauvegarde.");
   }
 
   const baseCount = totals.base;
@@ -566,11 +567,11 @@ function App() {
           </span>
         </button>
         <div className="headline">
-          <p className="eyebrow">Checklist tracker</p>
-          <h1>Full set tracker</h1>
+          <p className="eyebrow">Checklist</p>
+          <h1>Suivi full set</h1>
         </div>
         <div className="stats" aria-label="Checklist stats">
-          <span>{cards.length} cards</span>
+          <span>{cards.length} cartes</span>
           <span>{baseCount} base</span>
           <span>{insertCount} inserts</span>
           <span>{autoCount} autos</span>
@@ -580,15 +581,15 @@ function App() {
       <section className="collection-bar" aria-label="Collection progress">
         <div>
           <strong>{totals.owned}</strong>
-          <span>je l'ai</span>
+          <span>Je l'ai</span>
         </div>
         <div>
           <strong>{totals.wanted}</strong>
-          <span>recherche</span>
+          <span>Recherche</span>
         </div>
         <div>
           <strong>{totals.trade}</strong>
-          <span>a l'echange</span>
+          <span>A l'echange</span>
         </div>
         <button className="icon-button labeled" onClick={exportCollection} type="button">
           <Download size={17} />
@@ -596,18 +597,29 @@ function App() {
         </button>
       </section>
 
-      <section className="subset-progress" aria-label="Subset progress">
-        {subsetProgress.map((item) => (
-          <div className="subset-progress-item" key={item.subset}>
-            <div>
-              <strong>{item.subset}</strong>
-              <span>
-                {item.owned}/{item.total} · {item.percent}%
-              </span>
+      <section className="progress-section" aria-label="Progression">
+        <button
+          className="progress-toggle"
+          type="button"
+          onClick={() => setIsSubsetProgressOpen((current) => !current)}
+          aria-expanded={isSubsetProgressOpen}
+        >
+          <span>Progression par subset</span>
+          <strong>{subsetProgress.filter((item) => item.percent === 100).length}/{subsetProgress.length}</strong>
+        </button>
+        <div className={`subset-progress ${isSubsetProgressOpen ? "open" : ""}`}>
+          {subsetProgress.map((item) => (
+            <div className="subset-progress-item" key={item.subset}>
+              <div>
+                <strong>{item.subset}</strong>
+                <span>
+                  {item.owned}/{item.total} - {item.percent}%
+                </span>
+              </div>
+              <meter min="0" max={item.total} value={item.owned} aria-label={`${item.subset} progress`} />
             </div>
-            <meter min="0" max={item.total} value={item.owned} aria-label={`${item.subset} progress`} />
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       <section className="account-strip" aria-label="Account">
@@ -658,8 +670,8 @@ function App() {
               <div className="account-form-header">
                 <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
                 <span>
-                  <strong>Connexion collectionneur</strong>
-                  <small>Email, mot de passe et Discord pour les trades.</small>
+                  <strong>Compte collectionneur</strong>
+                  <small>Email, mot de passe et Discord pour les echanges.</small>
                 </span>
               </div>
               <div className="account-fields">
@@ -721,7 +733,7 @@ function App() {
             </form>
           )
         ) : (
-          <span>Local mode. Cloud sync inactive until Supabase env vars are available in this build.</span>
+          <span>Compte local. Sync cloud inactive.</span>
         )}
         {!user && !isAccountOpen ? (
           <button className="account-cta" type="button" onClick={() => setIsAccountOpen(true)}>
@@ -737,7 +749,7 @@ function App() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search player, team, subset, #145"
+            placeholder="Chercher joueur, equipe, subset, #145"
           />
         </label>
         <div className="filters">
@@ -773,23 +785,23 @@ function App() {
 
       <section className="table-wrap">
         {isLoading ? (
-          <p className="state">Loading checklist...</p>
+          <p className="state">Chargement de la checklist...</p>
         ) : error ? (
-          <p className="state state-error">Could not load checklist: {error}</p>
+          <p className="state state-error">Impossible de charger la checklist: {error}</p>
         ) : (
           <>
             <table>
               <thead>
                 <tr>
                   <th>No.</th>
-                  <th>Player</th>
-                  <th>Team</th>
+                  <th>Joueur</th>
+                  <th>Equipe</th>
                   <th>Subset</th>
                   <th>Type</th>
                   <th>Je l'ai</th>
                   <th>Echange</th>
-                  <th>Want</th>
-                  <th>Priority</th>
+                  <th>Recherche</th>
+                  <th>Priorite</th>
                 </tr>
               </thead>
               <tbody>
@@ -808,7 +820,7 @@ function App() {
                         <button
                           className={`check-button ${entry.owned_count > 0 ? "selected" : ""}`}
                           aria-pressed={entry.owned_count > 0}
-                          aria-label={entry.owned_count > 0 ? "Mark as not owned" : "Mark as owned"}
+                          aria-label={entry.owned_count > 0 ? "Marquer comme non possedee" : "Marquer comme possedee"}
                           onClick={() => toggleOwned(card.id)}
                           type="button"
                         >
@@ -816,9 +828,10 @@ function App() {
                         </button>
                       </td>
                       <td>
-                        <div className="stepper">
+                        <div className={`stepper ${entry.owned_count === 0 ? "inactive" : ""}`}>
                           <button
-                            aria-label="Decrease trade count"
+                            aria-label="Reduire le nombre a l'echange"
+                            disabled={entry.trade_count === 0}
                             onClick={() =>
                               updateCard(card.id, (current) => ({
                                 ...current,
@@ -831,7 +844,7 @@ function App() {
                           </button>
                           <span>{entry.trade_count}</span>
                           <button
-                            aria-label="Increase trade count"
+                            aria-label="Augmenter le nombre a l'echange"
                             onClick={() =>
                               updateCard(card.id, (current) => ({
                                 ...current,
@@ -888,32 +901,29 @@ function App() {
                       <div>
                         <strong>{card.player_name}</strong>
                         <small>
-                          {card.team_name} · {card.subset}
+                          {card.team_name} - {card.subset}
                         </small>
                       </div>
                       <span className="pill">{card.category}</span>
+                      <button
+                        className={`check-button quick-owned ${entry.owned_count > 0 ? "selected" : ""}`}
+                        aria-pressed={entry.owned_count > 0}
+                        aria-label={entry.owned_count > 0 ? "Marquer comme non possedee" : "Marquer comme possedee"}
+                        onClick={() => toggleOwned(card.id)}
+                        type="button"
+                      >
+                        <Check size={16} />
+                        {entry.owned_count > 0 ? "Oui" : "Je l'ai"}
+                      </button>
                     </div>
 
                     <div className="mobile-actions">
                       <label>
-                        <small>Je l'ai</small>
-                        <button
-                          className={`check-button ${entry.owned_count > 0 ? "selected" : ""}`}
-                          aria-pressed={entry.owned_count > 0}
-                          aria-label={entry.owned_count > 0 ? "Mark as not owned" : "Mark as owned"}
-                          onClick={() => toggleOwned(card.id)}
-                          type="button"
-                        >
-                          <Check size={16} />
-                          {entry.owned_count > 0 ? "Oui" : "Non"}
-                        </button>
-                      </label>
-
-                      <label>
                         <small>A l'echange</small>
-                        <div className="stepper">
+                        <div className={`stepper ${entry.owned_count === 0 ? "inactive" : ""}`}>
                           <button
-                            aria-label="Decrease trade count"
+                            aria-label="Reduire le nombre a l'echange"
+                            disabled={entry.trade_count === 0}
                             onClick={() =>
                               updateCard(card.id, (current) => ({
                                 ...current,
@@ -926,7 +936,7 @@ function App() {
                           </button>
                           <span>{entry.trade_count}</span>
                           <button
-                            aria-label="Increase trade count"
+                            aria-label="Augmenter le nombre a l'echange"
                             onClick={() =>
                               updateCard(card.id, (current) => ({
                                 ...current,
@@ -949,7 +959,7 @@ function App() {
                         type="button"
                       >
                         <Heart size={16} />
-                        Want
+                        Recherche
                       </button>
 
                       <button
