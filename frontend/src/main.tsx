@@ -1474,21 +1474,44 @@ function App() {
             {filteredCards.map((card) => {
               const entry = collection[card.id] ?? emptyEntry();
               return (
-                <button
-                  aria-label={`${card.card_number} - ${card.player_name} - ${
-                    entry.owned_count > 0 ? "possedee" : "manquante"
-                  }`}
-                  aria-pressed={entry.owned_count > 0}
+                <div
                   className={`number-tile ${entry.owned_count > 0 ? "owned" : "missing"} ${
                     entry.wanted ? "wanted" : ""
                   } ${entry.trade_count > 0 ? "trade" : ""}`}
                   key={card.id}
-                  onClick={() => toggleOwned(card.id)}
                   title={`${card.card_number} - ${card.player_name} - ${card.team_name}`}
-                  type="button"
                 >
-                  {card.card_number}
-                </button>
+                  <button
+                    aria-label={`${card.card_number} - ${card.player_name} - ${
+                      entry.owned_count > 0 ? "possedee" : "manquante"
+                    }`}
+                    aria-pressed={entry.owned_count > 0}
+                    className="number-main"
+                    onClick={() => toggleOwned(card.id)}
+                    type="button"
+                  >
+                    {card.card_number}
+                  </button>
+                  <button
+                    aria-label={
+                      entry.trade_count > 0
+                        ? "Retirer des doubles a l'echange"
+                        : "Marquer comme double a l'echange"
+                    }
+                    aria-pressed={entry.trade_count > 0}
+                    className="number-trade-toggle"
+                    onClick={() =>
+                      updateCard(card.id, (current) => ({
+                        ...current,
+                        owned_count: current.trade_count > 0 ? current.owned_count : Math.max(current.owned_count, 1),
+                        trade_count: current.trade_count > 0 ? 0 : 1,
+                      }))
+                    }
+                    type="button"
+                  >
+                    {entry.trade_count > 0 ? `x${entry.trade_count}` : "+"}
+                  </button>
+                </div>
               );
             })}
           </div>
