@@ -280,7 +280,7 @@ function GuidePage() {
         <article className="guide-panel">
           <h2>4. Sauvegarder avec un compte</h2>
           <p>
-            Connecte-toi pour synchroniser ta collection dans Supabase. Ton pseudo et ton Discord
+            Connecte-toi pour synchroniser ta collection sur ton compte. Ton pseudo et ton Discord
             servent aux autres collectionneurs pour te retrouver.
           </p>
         </article>
