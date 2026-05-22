@@ -51,6 +51,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 #root {
   min-height: 100dvh;
 }
@@ -243,6 +247,27 @@ h1 {
   border-color: var(--border-accent);
   background: var(--accent-dim);
   color: var(--accent);
+}
+
+.sync-strip {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(20, 20, 23, 0.64);
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sync-strip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .collection-bar div {

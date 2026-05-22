@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import {
   Check,
   Download,
   Heart,
+  Upload,
   Minus,
   Plus,
   Search,
@@ -64,6 +65,7 @@ const GOAL_CATEGORIES: Array<{ key: GoalCategory; label: string }> = [
   { key: "Inserts", label: "Inserts" },
   { key: "Autographs", label: "Autos" },
 ];
+const SUPABASE_PAGE_SIZE = 1000;
 
 const supabase: SupabaseClient | null =
   SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -115,6 +117,60 @@ function normalizeCardNumber(value: string) {
   return value.trim().replace(/^#\s*/i, "").replace(/^no\.?\s*/i, "").toLowerCase();
 }
 
+function csvCell(value: string | number | boolean) {
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      current += '"';
+      index += 1;
+    } else if (character === '"') {
+      inQuotes = !inQuotes;
+    } else if (character === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+
+  cells.push(current);
+  return cells.map((cell) => cell.trim());
+}
+
+function parseWanted(value: string | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return ["1", "true", "yes", "y", "oui", "o"].includes(normalized);
+}
+
+function parseCount(value: string | undefined, max: number) {
+  return clamp(Number.parseInt(value ?? "0", 10) || 0, 0, max);
+}
+
+async function fetchAllDbCards(client: SupabaseClient) {
+  const dbCards: DbCard[] = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const to = from + SUPABASE_PAGE_SIZE - 1;
+    const { data, error } = await client
+      .from("hoops_cards")
+      .select("id, card_number, subset")
+      .range(from, to);
+
+    if (error) return { data: null, error };
+    dbCards.push(...((data ?? []) as DbCard[]));
+    if (!data || data.length < SUPABASE_PAGE_SIZE) return { data: dbCards, error: null };
+  }
+}
+
 function App() {
   const [cards, setCards] = useState<Card[]>([]);
   const [collection, setCollection] = useState<Record<string, CollectionEntry>>(() =>
@@ -145,6 +201,7 @@ function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [isSubsetProgressOpen, setIsSubsetProgressOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetch(`${API_URL}/cards`)
@@ -236,9 +293,7 @@ function App() {
         return;
       }
 
-      const { data: dbCards, error: cardError } = await client
-        .from("hoops_cards")
-        .select("id, card_number, subset");
+      const { data: dbCards, error: cardError } = await fetchAllDbCards(client);
 
       if (cancelled) return;
       if (cardError) {
@@ -252,6 +307,10 @@ function App() {
         if (clientCard) nextDbCardIds[clientCard.id] = dbCard.id;
       }
       setDbCardIds(nextDbCardIds);
+      if (Object.keys(nextDbCardIds).length === 0) {
+        setSyncMessage("Sync impossible: aucune carte trouvee dans hoops_cards.");
+        return;
+      }
 
       const { data: rows, error: collectionError } = await client
         .from("hoops_user_cards")
@@ -284,9 +343,13 @@ function App() {
 
       if (!localStorage.getItem(migrationKey) && localRows.length > 0) {
         const payload: Array<CollectionEntry & { user_id: string; card_id: string }> = [];
+        let skippedRows = 0;
         for (const [cardId, entry] of localRows) {
           const dbCardId = nextDbCardIds[cardId];
-          if (!dbCardId) continue;
+          if (!dbCardId) {
+            skippedRows += 1;
+            continue;
+          }
           payload.push({
             user_id: currentUser.id,
             card_id: dbCardId,
@@ -295,6 +358,12 @@ function App() {
             wanted: entry.wanted,
             priority: entry.priority,
           });
+        }
+
+        if (payload.length === 0) {
+          setCollection({ ...cloudCollection, ...localCollection });
+          setSyncMessage("Collection locale non migree: aucune carte locale ne correspond a hoops_cards.");
+          return;
         }
 
         if (payload.length > 0) {
@@ -306,9 +375,13 @@ function App() {
           }
         }
 
-        localStorage.setItem(migrationKey, "1");
+        if (skippedRows === 0) localStorage.setItem(migrationKey, "1");
         setCollection({ ...cloudCollection, ...localCollection });
-        setSyncMessage("Collection locale migree dans le cloud.");
+        setSyncMessage(
+          skippedRows > 0
+            ? `Migration partielle: ${payload.length} cartes sauvegardees, ${skippedRows} non liees.`
+            : "Collection locale migree dans le cloud.",
+        );
         return;
       }
 
@@ -418,7 +491,7 @@ function App() {
     if (!supabase || !user) return;
     const dbCardId = dbCardIds[cardId];
     if (!dbCardId) {
-      setSyncMessage("Cette carte n'est pas encore liee a Supabase.");
+      setSyncMessage("Non sauvegarde: cette carte n'est pas liee a hoops_cards.");
       return;
     }
 
@@ -471,7 +544,7 @@ function App() {
   function exportCollection() {
     const rows = targetCards
       .map((card) => ({ card, entry: collection[card.id] ?? emptyEntry() }))
-      .filter(({ entry }) => entry.owned_count || entry.trade_count || entry.wanted)
+      .filter(({ entry }) => isActiveEntry(entry))
       .map(({ card, entry }) =>
         [
           card.card_number,
@@ -482,7 +555,9 @@ function App() {
           entry.trade_count,
           entry.wanted ? "yes" : "no",
           entry.priority,
-        ].join(","),
+        ]
+          .map(csvCell)
+          .join(","),
       );
 
     const csv = [
@@ -495,6 +570,118 @@ function App() {
     link.download = "hoops-fullset-collection.csv";
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function saveImportedCollection(nextCollection: Record<string, CollectionEntry>) {
+    if (!supabase || !user) {
+      setSyncMessage("Import local OK. Connecte-toi pour synchroniser dans Supabase.");
+      return;
+    }
+
+    const payload: Array<CollectionEntry & { user_id: string; card_id: string }> = [];
+    let skippedRows = 0;
+    for (const [cardId, entry] of Object.entries(nextCollection)) {
+      if (!isActiveEntry(entry)) continue;
+      const dbCardId = dbCardIds[cardId];
+      if (!dbCardId) {
+        skippedRows += 1;
+        continue;
+      }
+      payload.push({
+        user_id: user.id,
+        card_id: dbCardId,
+        owned_count: entry.owned_count,
+        trade_count: entry.trade_count,
+        wanted: entry.wanted,
+        priority: entry.priority,
+      });
+    }
+
+    if (payload.length === 0) {
+      setSyncMessage("Import local OK, mais aucune carte importee n'est liee a hoops_cards.");
+      return;
+    }
+
+    const { error: importError } = await supabase.from("hoops_user_cards").upsert(payload);
+    if (importError) {
+      setSyncMessage(`Import local OK, erreur cloud: ${importError.message}`);
+      return;
+    }
+
+    localStorage.setItem(`${CLOUD_MIGRATION_KEY}:${user.id}`, "1");
+    setSyncMessage(
+      skippedRows > 0
+        ? `Import OK: ${payload.length} cartes synchronisees, ${skippedRows} non liees.`
+        : `Import OK: ${payload.length} cartes synchronisees.`,
+    );
+  }
+
+  async function importCollection(file: File | null) {
+    if (!file) return;
+
+    try {
+      const text = (await file.text()).replace(/^\uFEFF/, "");
+      const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+      if (lines.length < 2) {
+        setSyncMessage("Import impossible: le CSV ne contient aucune carte.");
+        return;
+      }
+
+      const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+      const column = (name: string) => headers.indexOf(name);
+      const numberIndex = column("card_number");
+      const subsetIndex = column("subset");
+      const ownedIndex = column("owned_count");
+      const tradeIndex = column("trade_count");
+      const wantedIndex = column("wanted");
+      const priorityIndex = column("priority");
+
+      if (numberIndex === -1 || subsetIndex === -1) {
+        setSyncMessage("Import impossible: colonnes card_number et subset manquantes.");
+        return;
+      }
+
+      const cardByKey = new Map(cards.map((card) => [cardLookupKey(card.card_number, card.subset), card]));
+      const imported: Record<string, CollectionEntry> = {};
+      let matchedRows = 0;
+      let skippedRows = 0;
+
+      for (const line of lines.slice(1)) {
+        const cells = parseCsvLine(line);
+        const card = cardByKey.get(cardLookupKey(cells[numberIndex] ?? "", cells[subsetIndex] ?? ""));
+        if (!card) {
+          skippedRows += 1;
+          continue;
+        }
+
+        const entry: CollectionEntry = {
+          owned_count: parseCount(cells[ownedIndex], 99),
+          trade_count: parseCount(cells[tradeIndex], 99),
+          wanted: parseWanted(cells[wantedIndex]),
+          priority: parseCount(cells[priorityIndex], 5),
+        };
+        imported[card.id] = entry;
+        matchedRows += 1;
+      }
+
+      if (matchedRows === 0) {
+        setSyncMessage("Import impossible: aucune ligne du CSV ne correspond a la checklist.");
+        return;
+      }
+
+      const nextCollection = { ...collection, ...imported };
+      setCollection(nextCollection);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextCollection));
+      setSyncMessage(
+        skippedRows > 0
+          ? `Import local OK: ${matchedRows} cartes restaurees, ${skippedRows} ignorees.`
+          : `Import local OK: ${matchedRows} cartes restaurees.`,
+      );
+      await saveImportedCollection(nextCollection);
+    } catch (importError) {
+      const message = importError instanceof Error ? importError.message : "Erreur inconnue";
+      setSyncMessage(`Import impossible: ${message}`);
+    }
   }
 
   async function upsertProfile(displayName: string, discord: string) {
@@ -637,6 +824,11 @@ function App() {
       : GOAL_CATEGORIES.filter((item) => targetCategories[item.key])
           .map((item) => item.label)
           .join(" + ");
+  const syncStatus = supabase
+    ? user
+      ? syncMessage ?? "Sync cloud active."
+      : "Connecte-toi pour sauvegarder dans Supabase."
+    : "Mode local. Supabase n'est pas configure sur ce build.";
 
   return (
     <main className="shell">
@@ -880,6 +1072,10 @@ function App() {
         </div>
       </section>
 
+      <section className="sync-strip" aria-label="Statut de synchronisation">
+        <span>{syncStatus}</span>
+      </section>
+
       <section className="collection-bar" aria-label="Collection progress">
         <div>
           <strong>{totals.owned}</strong>
@@ -893,6 +1089,25 @@ function App() {
           <strong>{totals.trade}</strong>
           <span>A l'echange</span>
         </div>
+        <input
+          ref={importInputRef}
+          className="hidden-file-input"
+          type="file"
+          accept=".csv,text/csv"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0] ?? null;
+            void importCollection(file);
+            event.currentTarget.value = "";
+          }}
+        />
+        <button
+          className="icon-button labeled"
+          onClick={() => importInputRef.current?.click()}
+          type="button"
+        >
+          <Upload size={17} />
+          Import
+        </button>
         <button className="icon-button labeled" onClick={exportCollection} type="button">
           <Download size={17} />
           Export
