@@ -982,7 +982,7 @@ select option {
 
 table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 1220px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -1034,35 +1034,58 @@ td:nth-child(2) {
 
 th:nth-child(1),
 td:nth-child(1) {
-  width: 92px;
+  width: 76px;
 }
 
 th:nth-child(2),
 td:nth-child(2) {
-  width: 28%;
+  width: 25%;
 }
 
 th:nth-child(3),
 td:nth-child(3) {
-  width: 22%;
+  width: 19%;
 }
 
 th:nth-child(4),
 td:nth-child(4) {
-  width: 16%;
+  width: 14%;
 }
 
 th:nth-child(5),
-td:nth-child(5),
+td:nth-child(5) {
+  width: 86px;
+}
+
 th:nth-child(6),
-td:nth-child(6),
+td:nth-child(6) {
+  width: 82px;
+}
+
 th:nth-child(7),
-td:nth-child(7),
+td:nth-child(7) {
+  width: 126px;
+}
+
 th:nth-child(8),
-td:nth-child(8),
+td:nth-child(8) {
+  width: 92px;
+}
+
 th:nth-child(9),
 td:nth-child(9) {
-  width: 94px;
+  width: 92px;
+}
+
+th:nth-child(n + 5),
+td:nth-child(n + 5) {
+  padding-right: 8px;
+  padding-left: 8px;
+  text-align: center;
+}
+
+td:nth-child(n + 5) {
+  overflow: visible;
 }
 
 .number {
@@ -1072,6 +1095,7 @@ td:nth-child(9) {
 
 .stepper {
   width: 108px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 32px 1fr 32px;
   align-items: center;
