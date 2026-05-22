@@ -713,8 +713,8 @@ function App() {
 
     updateCard(cardId, (current) => ({
       ...current,
-      owned_count: current.trade_count > 0 ? current.owned_count : Math.max(current.owned_count, 1),
-      trade_count: current.trade_count > 0 ? 0 : 1,
+      owned_count: Math.max(current.owned_count, 1),
+      trade_count: current.trade_count + 1,
     }));
   }
 
@@ -1530,6 +1530,7 @@ function App() {
                   type="button"
                 >
                   {card.card_number}
+                  {entry.trade_count > 0 ? <span className="number-trade-count">x{entry.trade_count}</span> : null}
                 </button>
               );
             })}

@@ -953,6 +953,7 @@ select option {
 }
 
 .number-tile {
+  position: relative;
   min-height: 44px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
@@ -989,6 +990,20 @@ select option {
   border-color: rgba(96, 165, 250, 0.55);
   background: rgba(96, 165, 250, 0.15);
   color: #d7edff;
+}
+
+.number-trade-count {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 23px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.24);
+  color: #d7edff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 5px;
 }
 
 .mobile-card-list {
