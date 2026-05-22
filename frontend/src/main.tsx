@@ -51,12 +51,19 @@ type UserCardRow = CollectionEntry & {
 
 type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
 type AuthMode = "login" | "signup";
+type GoalCategory = "Base" | "Inserts" | "Autographs";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://api-fullset.cardvaults.app";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_KEY = "hoops-fullset-collection-v1";
+const TARGET_STORAGE_KEY = "hoops-fullset-target-v1";
 const CLOUD_MIGRATION_KEY = "hoops-fullset-cloud-migrated-v1";
+const GOAL_CATEGORIES: Array<{ key: GoalCategory; label: string }> = [
+  { key: "Base", label: "Base" },
+  { key: "Inserts", label: "Inserts" },
+  { key: "Autographs", label: "Autos" },
+];
 
 const supabase: SupabaseClient | null =
   SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -78,6 +85,24 @@ function readStoredCollection(): Record<string, CollectionEntry> {
   }
 }
 
+function defaultTargetCategories(): Record<GoalCategory, boolean> {
+  return { Autographs: true, Base: true, Inserts: true };
+}
+
+function readStoredTargetCategories(): Record<GoalCategory, boolean> {
+  try {
+    const raw = localStorage.getItem(TARGET_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const next = defaultTargetCategories();
+    for (const category of GOAL_CATEGORIES) {
+      if (typeof parsed[category.key] === "boolean") next[category.key] = parsed[category.key];
+    }
+    return Object.values(next).some(Boolean) ? next : defaultTargetCategories();
+  } catch {
+    return defaultTargetCategories();
+  }
+}
+
 function isActiveEntry(entry: CollectionEntry) {
   return entry.owned_count > 0 || entry.trade_count > 0 || entry.wanted || entry.priority > 0;
 }
@@ -94,6 +119,9 @@ function App() {
   const [cards, setCards] = useState<Card[]>([]);
   const [collection, setCollection] = useState<Record<string, CollectionEntry>>(() =>
     readStoredCollection(),
+  );
+  const [targetCategories, setTargetCategories] = useState<Record<GoalCategory, boolean>>(() =>
+    readStoredTargetCategories(),
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +168,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
   }, [collection]);
+
+  useEffect(() => {
+    localStorage.setItem(TARGET_STORAGE_KEY, JSON.stringify(targetCategories));
+  }, [targetCategories]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -291,15 +323,29 @@ function App() {
     };
   }, [cards, user]);
 
-  const categories = useMemo(
-    () => ["All", ...Array.from(new Set(cards.map((card) => card.category))).sort()],
-    [cards],
+  const targetCategoryKeys = useMemo(
+    () => GOAL_CATEGORIES.filter((item) => targetCategories[item.key]).map((item) => item.key),
+    [targetCategories],
   );
+
+  const targetCards = useMemo(
+    () => cards.filter((card) => targetCategories[card.category as GoalCategory] ?? true),
+    [cards, targetCategories],
+  );
+
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(targetCards.map((card) => card.category))).sort()],
+    [targetCards],
+  );
+
+  useEffect(() => {
+    if (category !== "All" && !categories.includes(category)) setCategory("All");
+  }, [categories, category]);
 
   const filteredCards = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const numberNeedle = normalizeCardNumber(query);
-    return cards.filter((card) => {
+    return targetCards.filter((card) => {
       const entry = collection[card.id] ?? emptyEntry();
       const categoryMatch = category === "All" || card.category === category;
       const numberMatch = Boolean(numberNeedle) && normalizeCardNumber(card.card_number) === numberNeedle;
@@ -318,10 +364,10 @@ function App() {
         (viewMode === "trade" && entry.trade_count > 0);
       return categoryMatch && queryMatch && modeMatch;
     });
-  }, [cards, category, collection, query, viewMode]);
+  }, [targetCards, category, collection, query, viewMode]);
 
   const totals = useMemo(() => {
-    return cards.reduce(
+    return targetCards.reduce(
       (acc, card) => {
         const entry = collection[card.id] ?? emptyEntry();
         if (entry.owned_count > 0) acc.owned += 1;
@@ -334,7 +380,7 @@ function App() {
       },
       { autos: 0, base: 0, inserts: 0, owned: 0, trade: 0, wanted: 0 },
     );
-  }, [cards, collection]);
+  }, [targetCards, collection]);
 
   const categoryProgress = useMemo(() => {
     const labels: Record<string, string> = {
@@ -344,7 +390,7 @@ function App() {
     };
     const order = ["Base", "Inserts", "Autographs"];
     const progress = new Map<string, { label: string; owned: number; total: number }>();
-    for (const card of cards) {
+    for (const card of targetCards) {
       const current = progress.get(card.category) ?? {
         label: labels[card.category] ?? card.category,
         owned: 0,
@@ -366,7 +412,7 @@ function App() {
         const bIndex = order.indexOf(b.categoryName);
         return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
       });
-  }, [cards, collection]);
+  }, [targetCards, collection]);
 
   async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
     if (!supabase || !user) return;
@@ -414,8 +460,16 @@ function App() {
     });
   }
 
+  function toggleTargetCategory(categoryName: GoalCategory) {
+    setTargetCategories((current) => {
+      const enabledCount = GOAL_CATEGORIES.filter((item) => current[item.key]).length;
+      if (current[categoryName] && enabledCount === 1) return current;
+      return { ...current, [categoryName]: !current[categoryName] };
+    });
+  }
+
   function exportCollection() {
-    const rows = cards
+    const rows = targetCards
       .map((card) => ({ card, entry: collection[card.id] ?? emptyEntry() }))
       .filter(({ entry }) => entry.owned_count || entry.trade_count || entry.wanted)
       .map(({ card, entry }) =>
@@ -576,6 +630,13 @@ function App() {
   const baseCount = totals.base;
   const autoCount = totals.autos;
   const insertCount = totals.inserts;
+  const targetCount = targetCards.length;
+  const targetLabel =
+    targetCategoryKeys.length === GOAL_CATEGORIES.length
+      ? "Full set"
+      : GOAL_CATEGORIES.filter((item) => targetCategories[item.key])
+          .map((item) => item.label)
+          .join(" + ");
 
   return (
     <main className="shell">
@@ -593,7 +654,7 @@ function App() {
         </div>
         <div className="topbar-actions">
           <div className="stats" aria-label="Checklist stats">
-            <span>{cards.length} cartes</span>
+            <span>{targetCount} cartes</span>
             <span>{baseCount} base</span>
             <span>{insertCount} inserts</span>
             <span>{autoCount} autos</span>
@@ -797,6 +858,27 @@ function App() {
           </div>
         </section>
       ) : null}
+
+      <section className="target-section" aria-label="Objectif de collection">
+        <div className="target-header">
+          <span>Objectif</span>
+          <strong>{targetLabel}</strong>
+        </div>
+        <div className="target-options">
+          {GOAL_CATEGORIES.map((item) => (
+            <button
+              className={targetCategories[item.key] ? "active" : ""}
+              key={item.key}
+              onClick={() => toggleTargetCategory(item.key)}
+              type="button"
+              aria-pressed={targetCategories[item.key]}
+            >
+              <Check size={15} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="collection-bar" aria-label="Collection progress">
         <div>
