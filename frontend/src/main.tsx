@@ -5,11 +5,13 @@ import {
   Check,
   Download,
   Grid3X3,
+  Handshake,
   Heart,
   List,
   Upload,
   Minus,
   Plus,
+  RefreshCw,
   Search,
   SlidersHorizontal,
   Star,
@@ -47,9 +49,30 @@ type DbCard = {
   subset: string;
 };
 
+type TradeDbCard = Card;
+
 type UserCardRow = CollectionEntry & {
   card_id: string;
   hoops_cards: DbCard | DbCard[] | null;
+};
+
+type PublicUserCardRow = CollectionEntry & {
+  user_id: string;
+  card_id: string;
+  hoops_cards: TradeDbCard | TradeDbCard[] | null;
+  hoops_profiles: UserProfile | UserProfile[] | null;
+};
+
+type TradeMatch = {
+  card: Card;
+  tradeCount: number;
+  priority: number;
+};
+
+type TradePartner = {
+  profile: UserProfile;
+  theyHaveForMe: TradeMatch[];
+  iHaveForThem: TradeMatch[];
 };
 
 type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
@@ -205,6 +228,9 @@ function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [isSubsetProgressOpen, setIsSubsetProgressOpen] = useState(false);
+  const [publicTradeRows, setPublicTradeRows] = useState<PublicUserCardRow[]>([]);
+  const [isLoadingTradeMatches, setIsLoadingTradeMatches] = useState(false);
+  const [tradeMatchError, setTradeMatchError] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -400,6 +426,16 @@ function App() {
     };
   }, [cards, user]);
 
+  useEffect(() => {
+    if (!supabase || !user) {
+      setPublicTradeRows([]);
+      setTradeMatchError(null);
+      return;
+    }
+
+    void loadTradeRows();
+  }, [user]);
+
   const targetCategoryKeys = useMemo(
     () => GOAL_CATEGORIES.filter((item) => targetCategories[item.key]).map((item) => item.key),
     [targetCategories],
@@ -490,6 +526,136 @@ function App() {
         return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
       });
   }, [targetCards, collection]);
+
+  const tradePartners = useMemo(() => {
+    const dbIdToCard = new Map<string, Card>();
+    const wantedDbCardIds = new Map<string, number>();
+    const myTradeDbCardCounts = new Map<string, number>();
+
+    for (const card of cards) {
+      const dbCardId = dbCardIds[card.id];
+      if (!dbCardId) continue;
+      dbIdToCard.set(dbCardId, card);
+
+      const entry = collection[card.id] ?? emptyEntry();
+      if (entry.wanted) wantedDbCardIds.set(dbCardId, entry.priority);
+      if (entry.trade_count > 0) myTradeDbCardCounts.set(dbCardId, entry.trade_count);
+    }
+
+    const partners = new Map<string, TradePartner>();
+
+    for (const row of publicTradeRows) {
+      const dbCard = Array.isArray(row.hoops_cards) ? row.hoops_cards[0] : row.hoops_cards;
+      const card = dbIdToCard.get(row.card_id) ?? dbCard;
+      if (!card) continue;
+
+      const profileRow = Array.isArray(row.hoops_profiles) ? row.hoops_profiles[0] : row.hoops_profiles;
+      const profile: UserProfile = profileRow ?? {
+        id: row.user_id,
+        display_name: "Collectionneur",
+        discord_handle: null,
+      };
+
+      const partner = partners.get(row.user_id) ?? {
+        profile,
+        theyHaveForMe: [],
+        iHaveForThem: [],
+      };
+
+      const myPriority = wantedDbCardIds.get(row.card_id);
+      if (row.trade_count > 0 && myPriority !== undefined) {
+        partner.theyHaveForMe.push({
+          card,
+          priority: myPriority,
+          tradeCount: row.trade_count,
+        });
+      }
+
+      const myTradeCount = myTradeDbCardCounts.get(row.card_id);
+      if (row.wanted && myTradeCount) {
+        partner.iHaveForThem.push({
+          card,
+          priority: row.priority,
+          tradeCount: myTradeCount,
+        });
+      }
+
+      if (partner.theyHaveForMe.length > 0 || partner.iHaveForThem.length > 0) {
+        partners.set(row.user_id, partner);
+      }
+    }
+
+    return Array.from(partners.values())
+      .map((partner) => ({
+        ...partner,
+        theyHaveForMe: partner.theyHaveForMe.sort(
+          (a, b) => b.priority - a.priority || a.card.card_number.localeCompare(b.card.card_number),
+        ),
+        iHaveForThem: partner.iHaveForThem.sort(
+          (a, b) => b.priority - a.priority || a.card.card_number.localeCompare(b.card.card_number),
+        ),
+      }))
+      .sort((a, b) => {
+        const aMutual = a.theyHaveForMe.length > 0 && a.iHaveForThem.length > 0 ? 1 : 0;
+        const bMutual = b.theyHaveForMe.length > 0 && b.iHaveForThem.length > 0 ? 1 : 0;
+        if (aMutual !== bMutual) return bMutual - aMutual;
+        const aTotal = a.theyHaveForMe.length + a.iHaveForThem.length;
+        const bTotal = b.theyHaveForMe.length + b.iHaveForThem.length;
+        if (aTotal !== bTotal) return bTotal - aTotal;
+        return a.profile.display_name.localeCompare(b.profile.display_name);
+      });
+  }, [cards, collection, dbCardIds, publicTradeRows]);
+
+  const tradeMatchTotals = useMemo(
+    () =>
+      tradePartners.reduce(
+        (acc, partner) => {
+          acc.theyHave += partner.theyHaveForMe.length;
+          acc.iHave += partner.iHaveForThem.length;
+          return acc;
+        },
+        { iHave: 0, theyHave: 0 },
+      ),
+    [tradePartners],
+  );
+
+  function renderTradeCard(match: TradeMatch) {
+    return (
+      <li className="trade-card-row" key={`${match.card.id}-${match.card.subset}`}>
+        <span className="number">{match.card.card_number}</span>
+        <div>
+          <strong>{match.card.player_name}</strong>
+          <small>
+            {match.card.team_name} - {match.card.subset}
+          </small>
+        </div>
+        <span className="trade-count">x{match.tradeCount}</span>
+      </li>
+    );
+  }
+
+  async function loadTradeRows() {
+    if (!supabase || !user) return;
+
+    setIsLoadingTradeMatches(true);
+    setTradeMatchError(null);
+    const { data, error: tradeError } = await supabase
+      .from("hoops_user_cards")
+      .select(
+        "user_id, card_id, owned_count, trade_count, wanted, priority, hoops_cards(id, category, subset, card_number, player_name, team_name), hoops_profiles(id, display_name, discord_handle)",
+      )
+      .neq("user_id", user.id)
+      .or("trade_count.gt.0,wanted.eq.true");
+
+    setIsLoadingTradeMatches(false);
+    if (tradeError) {
+      setPublicTradeRows([]);
+      setTradeMatchError(tradeError.message);
+      return;
+    }
+
+    setPublicTradeRows((data ?? []) as PublicUserCardRow[]);
+  }
 
   async function persistCollectionEntry(cardId: string, entry: CollectionEntry) {
     if (!supabase || !user) return;
@@ -1143,6 +1309,99 @@ function App() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="trade-match-section" aria-label="Echanges">
+        <div className="trade-match-header">
+          <div>
+            <p className="eyebrow">Echanges</p>
+            <h2>Matches de doubles</h2>
+          </div>
+          {user ? (
+            <button
+              className="icon-button labeled"
+              disabled={isLoadingTradeMatches}
+              onClick={() => void loadTradeRows()}
+              type="button"
+            >
+              <RefreshCw size={16} />
+              Actualiser
+            </button>
+          ) : null}
+        </div>
+
+        {!supabase ? (
+          <p className="state compact">Supabase n'est pas configure sur ce build.</p>
+        ) : !user ? (
+          <p className="state compact">Connecte-toi pour voir qui matche avec tes recherches et tes doubles.</p>
+        ) : tradeMatchError ? (
+          <p className="state state-error compact">Impossible de charger les matches: {tradeMatchError}</p>
+        ) : (
+          <>
+            <div className="trade-match-summary" aria-label="Resume des echanges">
+              <div>
+                <strong>{tradePartners.length}</strong>
+                <span>Collectionneurs</span>
+              </div>
+              <div>
+                <strong>{tradeMatchTotals.theyHave}</strong>
+                <span>Ils ont pour toi</span>
+              </div>
+              <div>
+                <strong>{tradeMatchTotals.iHave}</strong>
+                <span>Tu as pour eux</span>
+              </div>
+            </div>
+
+            {isLoadingTradeMatches ? (
+              <p className="state compact">Chargement des matches...</p>
+            ) : tradePartners.length === 0 ? (
+              <p className="state compact">Aucun match pour l'instant.</p>
+            ) : (
+              <div className="trade-partner-list">
+                {tradePartners.map((partner) => (
+                  <article className="trade-partner" key={partner.profile.id}>
+                    <div className="trade-partner-title">
+                      <Handshake size={17} />
+                      <div>
+                        <strong>{partner.profile.display_name}</strong>
+                        {partner.profile.discord_handle ? <small>{partner.profile.discord_handle}</small> : null}
+                      </div>
+                    </div>
+                    <div className="trade-columns">
+                      <div className="trade-column">
+                        <h3>Ils ont pour toi</h3>
+                        {partner.theyHaveForMe.length > 0 ? (
+                          <>
+                            <ul>{partner.theyHaveForMe.slice(0, 8).map(renderTradeCard)}</ul>
+                            {partner.theyHaveForMe.length > 8 ? (
+                              <span className="trade-more">+{partner.theyHaveForMe.length - 8}</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p>Rien dans tes recherches.</p>
+                        )}
+                      </div>
+                      <div className="trade-column">
+                        <h3>Tu as pour eux</h3>
+                        {partner.iHaveForThem.length > 0 ? (
+                          <>
+                            <ul>{partner.iHaveForThem.slice(0, 8).map(renderTradeCard)}</ul>
+                            {partner.iHaveForThem.length > 8 ? (
+                              <span className="trade-more">+{partner.iHaveForThem.length - 8}</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p>Aucun de tes doubles dans leurs recherches.</p>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="toolbar" aria-label="Filters">

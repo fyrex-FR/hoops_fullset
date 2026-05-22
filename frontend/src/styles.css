@@ -393,6 +393,199 @@ h1 {
   background: linear-gradient(90deg, var(--accent), var(--accent-light));
 }
 
+.trade-match-section {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(20, 20, 23, 0.76);
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.trade-match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trade-match-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.trade-match-header .icon-button.labeled {
+  min-height: 38px;
+  margin-left: 0;
+  padding: 0 13px;
+}
+
+.trade-match-header .icon-button.labeled:disabled {
+  opacity: 0.62;
+}
+
+.trade-match-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.trade-match-summary div,
+.trade-partner {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.trade-match-summary div {
+  padding: 11px 12px;
+}
+
+.trade-match-summary strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.trade-match-summary span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trade-partner-list {
+  display: grid;
+  gap: 10px;
+}
+
+.trade-partner {
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+}
+
+.trade-partner-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--accent);
+}
+
+.trade-partner-title div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trade-partner-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-partner-title small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.trade-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trade-column {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.trade-column h3 {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.trade-column ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trade-column p,
+.trade-more {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trade-card-row {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(9, 9, 11, 0.38);
+  padding: 7px 8px;
+}
+
+.trade-card-row .number {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.trade-card-row div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.trade-card-row strong,
+.trade-card-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-card-row strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.trade-card-row small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.trade-count {
+  min-width: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 4px 7px;
+  text-align: center;
+}
+
 .account-menu {
   position: relative;
   display: flex;
@@ -999,6 +1192,12 @@ td:nth-child(9) {
   color: var(--text-secondary);
 }
 
+.state.compact {
+  padding: 8px 0 2px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .state-error {
   color: var(--red);
 }
@@ -1163,6 +1362,25 @@ td:nth-child(9) {
 
   .category-progress.open {
     grid-template-columns: 1fr;
+  }
+
+  .trade-match-header,
+  .trade-columns {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trade-match-header .icon-button.labeled {
+    width: 100%;
+  }
+
+  .trade-match-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-card-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
   }
 
   .toolbar {
