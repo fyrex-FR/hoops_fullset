@@ -4,7 +4,9 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import {
   Check,
   Download,
+  Grid3X3,
   Heart,
+  List,
   Upload,
   Minus,
   Plus,
@@ -51,6 +53,7 @@ type UserCardRow = CollectionEntry & {
 };
 
 type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
+type DisplayMode = "details" | "numbers";
 type AuthMode = "login" | "signup";
 type GoalCategory = "Base" | "Inserts" | "Autographs";
 
@@ -184,6 +187,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("details");
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1161,31 +1165,74 @@ function App() {
       </section>
 
       <section className="view-tabs" aria-label="Collection views">
-        {(["all", "missing", "owned", "wanted", "trade"] as ViewMode[]).map((mode) => (
+        <div className="view-filter-tabs">
+          {(["all", "missing", "owned", "wanted", "trade"] as ViewMode[]).map((mode) => (
+            <button
+              className={viewMode === mode ? "active" : ""}
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              type="button"
+            >
+              {mode === "all"
+                ? "Toutes"
+                : mode === "missing"
+                  ? "A completer"
+                : mode === "owned"
+                  ? "Je l'ai"
+                  : mode === "wanted"
+                    ? "Recherche"
+                    : "A l'echange"}
+            </button>
+          ))}
+        </div>
+        <div className="display-tabs" aria-label="Mode d'affichage">
           <button
-            className={viewMode === mode ? "active" : ""}
-            key={mode}
-            onClick={() => setViewMode(mode)}
+            className={displayMode === "details" ? "active" : ""}
+            onClick={() => setDisplayMode("details")}
             type="button"
           >
-            {mode === "all"
-              ? "Toutes"
-              : mode === "missing"
-                ? "A completer"
-              : mode === "owned"
-                ? "Je l'ai"
-                : mode === "wanted"
-                  ? "Recherche"
-                  : "A l'echange"}
+            <List size={15} />
+            Details
           </button>
-        ))}
+          <button
+            className={displayMode === "numbers" ? "active" : ""}
+            onClick={() => setDisplayMode("numbers")}
+            type="button"
+          >
+            <Grid3X3 size={15} />
+            N°
+          </button>
+        </div>
       </section>
 
-      <section className="table-wrap">
+      <section className={`table-wrap ${displayMode === "numbers" ? "number-view" : ""}`}>
         {isLoading ? (
           <p className="state">Chargement de la checklist...</p>
         ) : error ? (
           <p className="state state-error">Impossible de charger la checklist: {error}</p>
+        ) : displayMode === "numbers" ? (
+          <div className="number-grid" aria-label="Numeros de cartes">
+            {filteredCards.map((card) => {
+              const entry = collection[card.id] ?? emptyEntry();
+              return (
+                <button
+                  aria-label={`${card.card_number} - ${card.player_name} - ${
+                    entry.owned_count > 0 ? "possedee" : "manquante"
+                  }`}
+                  aria-pressed={entry.owned_count > 0}
+                  className={`number-tile ${entry.owned_count > 0 ? "owned" : "missing"} ${
+                    entry.wanted ? "wanted" : ""
+                  } ${entry.trade_count > 0 ? "trade" : ""}`}
+                  key={card.id}
+                  onClick={() => toggleOwned(card.id)}
+                  title={`${card.card_number} - ${card.player_name} - ${card.team_name}`}
+                  type="button"
+                >
+                  {card.card_number}
+                </button>
+              );
+            })}
+          </div>
         ) : (
           <>
             <table>

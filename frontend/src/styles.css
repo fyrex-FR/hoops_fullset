@@ -696,10 +696,27 @@ select option {
 }
 
 .view-tabs {
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 14px;
 }
 
+.view-filter-tabs,
+.display-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.display-tabs {
+  margin-left: auto;
+}
+
 .view-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: var(--text-secondary);
 }
 
@@ -716,6 +733,54 @@ select option {
   border-radius: 16px;
   background: rgba(20, 20, 23, 0.82);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+}
+
+.table-wrap.number-view {
+  overflow: visible;
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 8px;
+  padding: 12px;
+}
+
+.number-tile {
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.number-tile:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
+}
+
+.number-tile.owned {
+  border-color: rgba(72, 187, 120, 0.5);
+  background: rgba(72, 187, 120, 0.14);
+  color: #d9fce7;
+}
+
+.number-tile.missing {
+  border-color: rgba(255, 184, 28, 0.52);
+  background: rgba(255, 184, 28, 0.1);
+  color: var(--accent);
+}
+
+.number-tile.wanted {
+  box-shadow: inset 0 0 0 2px rgba(255, 184, 28, 0.38);
+}
+
+.number-tile.trade {
+  color: #d7edff;
 }
 
 .mobile-card-list {
@@ -1125,6 +1190,16 @@ td:nth-child(9) {
     background: rgba(9, 9, 11, 0.96);
   }
 
+  .view-filter-tabs,
+  .display-tabs {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .display-tabs {
+    margin-left: 4px;
+  }
+
   .view-tabs button {
     flex: 0 0 auto;
     min-height: 38px;
@@ -1146,6 +1221,17 @@ td:nth-child(9) {
   .mobile-card-list {
     display: grid;
     gap: 10px;
+  }
+
+  .number-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 7px;
+    padding: 0;
+  }
+
+  .number-tile {
+    min-height: 42px;
+    font-size: 12px;
   }
 
   .mobile-card {
