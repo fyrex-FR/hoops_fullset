@@ -895,14 +895,27 @@ select option {
 }
 
 .view-filter-tabs,
+.number-tag-tabs,
 .display-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.display-tabs {
+.number-tag-tabs {
+  align-items: center;
   margin-left: auto;
+}
+
+.number-tag-tabs span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.display-tabs {
+  margin-left: 0;
 }
 
 .view-tabs button {
@@ -940,28 +953,15 @@ select option {
 }
 
 .number-tile {
-  position: relative;
-  min-height: 52px;
-  overflow: hidden;
+  min-height: 44px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
-}
-
-.number-main {
-  width: 100%;
-  min-height: 52px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: inherit;
   font-size: 13px;
   font-weight: 900;
   line-height: 1;
-  padding: 0 6px 10px;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
 .number-tile:hover {
@@ -988,35 +988,6 @@ select option {
 .number-tile.trade {
   border-color: rgba(96, 165, 250, 0.55);
   background: rgba(96, 165, 250, 0.15);
-  color: #d7edff;
-}
-
-.number-trade-toggle {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  min-width: 23px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(9, 9, 11, 0.72);
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1;
-  padding: 0 5px;
-}
-
-.number-trade-toggle:hover {
-  border-color: var(--border-accent);
-  color: var(--accent);
-}
-
-.number-tile.trade .number-trade-toggle {
-  border-color: rgba(96, 165, 250, 0.62);
-  background: rgba(96, 165, 250, 0.24);
   color: #d7edff;
 }
 
@@ -1477,6 +1448,7 @@ td:nth-child(n + 5) {
   }
 
   .view-filter-tabs,
+  .number-tag-tabs,
   .display-tabs {
     flex: 0 0 auto;
     flex-wrap: nowrap;

@@ -77,6 +77,7 @@ type TradePartner = {
 
 type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
 type DisplayMode = "details" | "numbers";
+type NumberTagMode = "owned" | "trade";
 type AuthMode = "login" | "signup";
 type GoalCategory = "Base" | "Inserts" | "Autographs";
 
@@ -211,6 +212,7 @@ function App() {
   const [category, setCategory] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("details");
+  const [numberTagMode, setNumberTagMode] = useState<NumberTagMode>("owned");
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -701,6 +703,19 @@ function App() {
         trade_count: owned ? 0 : current.trade_count,
       };
     });
+  }
+
+  function toggleNumberCard(cardId: string) {
+    if (numberTagMode === "owned") {
+      toggleOwned(cardId);
+      return;
+    }
+
+    updateCard(cardId, (current) => ({
+      ...current,
+      owned_count: current.trade_count > 0 ? current.owned_count : Math.max(current.owned_count, 1),
+      trade_count: current.trade_count > 0 ? 0 : 1,
+    }));
   }
 
   function toggleTargetCategory(categoryName: GoalCategory) {
@@ -1444,6 +1459,27 @@ function App() {
             </button>
           ))}
         </div>
+        {displayMode === "numbers" ? (
+          <div className="number-tag-tabs" aria-label="Action sur les numeros">
+            <span>Tag</span>
+            <button
+              className={numberTagMode === "owned" ? "active" : ""}
+              onClick={() => setNumberTagMode("owned")}
+              type="button"
+            >
+              <Check size={15} />
+              Je l'ai
+            </button>
+            <button
+              className={numberTagMode === "trade" ? "active" : ""}
+              onClick={() => setNumberTagMode("trade")}
+              type="button"
+            >
+              <RefreshCw size={15} />
+              Double
+            </button>
+          </div>
+        ) : null}
         <div className="display-tabs" aria-label="Mode d'affichage">
           <button
             className={displayMode === "details" ? "active" : ""}
@@ -1474,44 +1510,27 @@ function App() {
             {filteredCards.map((card) => {
               const entry = collection[card.id] ?? emptyEntry();
               return (
-                <div
+                <button
+                  aria-label={`${card.card_number} - ${card.player_name} - ${
+                    numberTagMode === "trade"
+                      ? entry.trade_count > 0
+                        ? "double a l'echange"
+                        : "pas en double"
+                      : entry.owned_count > 0
+                        ? "possedee"
+                        : "manquante"
+                  }`}
+                  aria-pressed={numberTagMode === "trade" ? entry.trade_count > 0 : entry.owned_count > 0}
                   className={`number-tile ${entry.owned_count > 0 ? "owned" : "missing"} ${
                     entry.wanted ? "wanted" : ""
                   } ${entry.trade_count > 0 ? "trade" : ""}`}
                   key={card.id}
+                  onClick={() => toggleNumberCard(card.id)}
                   title={`${card.card_number} - ${card.player_name} - ${card.team_name}`}
+                  type="button"
                 >
-                  <button
-                    aria-label={`${card.card_number} - ${card.player_name} - ${
-                      entry.owned_count > 0 ? "possedee" : "manquante"
-                    }`}
-                    aria-pressed={entry.owned_count > 0}
-                    className="number-main"
-                    onClick={() => toggleOwned(card.id)}
-                    type="button"
-                  >
-                    {card.card_number}
-                  </button>
-                  <button
-                    aria-label={
-                      entry.trade_count > 0
-                        ? "Retirer des doubles a l'echange"
-                        : "Marquer comme double a l'echange"
-                    }
-                    aria-pressed={entry.trade_count > 0}
-                    className="number-trade-toggle"
-                    onClick={() =>
-                      updateCard(card.id, (current) => ({
-                        ...current,
-                        owned_count: current.trade_count > 0 ? current.owned_count : Math.max(current.owned_count, 1),
-                        trade_count: current.trade_count > 0 ? 0 : 1,
-                      }))
-                    }
-                    type="button"
-                  >
-                    {entry.trade_count > 0 ? `x${entry.trade_count}` : "+"}
-                  </button>
-                </div>
+                  {card.card_number}
+                </button>
               );
             })}
           </div>
