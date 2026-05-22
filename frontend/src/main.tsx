@@ -6,6 +6,7 @@ import {
   Download,
   Grid3X3,
   Handshake,
+  HelpCircle,
   Heart,
   List,
   Upload,
@@ -96,6 +97,8 @@ const SUPABASE_PAGE_SIZE = 1000;
 
 const supabase: SupabaseClient | null =
   SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const GUIDE_HASH = "#/guide";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -194,6 +197,18 @@ function parseCount(value: string | undefined, max: number) {
   return clamp(Number.parseInt(value ?? "0", 10) || 0, 0, max);
 }
 
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  return hash;
+}
+
 async function fetchAllDbCards(client: SupabaseClient) {
   const dbCards: DbCard[] = [];
   for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
@@ -209,7 +224,98 @@ async function fetchAllDbCards(client: SupabaseClient) {
   }
 }
 
+function GuidePage() {
+  return (
+    <main className="guide-shell">
+      <section className="guide-topbar">
+        <a className="brand guide-brand" href="#/" aria-label="Retour checklist">
+          <span className="brand-mark">H</span>
+          <span>
+            <strong>
+              Hoops<span>Fullset</span>
+            </strong>
+            <small>Guide collectionneur</small>
+          </span>
+        </a>
+        <a className="guide-back" href="#/">
+          Retour checklist
+        </a>
+      </section>
+
+      <section className="guide-hero">
+        <p className="eyebrow">Guide rapide</p>
+        <h1>Suivre, exporter et echanger son full set Hoops</h1>
+        <p>
+          Cette checklist sert a marquer les cartes que tu possedes, celles que tu recherches et
+          les doubles que tu peux proposer a l'echange.
+        </p>
+      </section>
+
+      <section className="guide-grid" aria-label="Guide d'utilisation">
+        <article className="guide-panel">
+          <h2>1. Choisir l'objectif</h2>
+          <p>
+            Les boutons Base, Inserts et Autos filtrent la checklist selon ce que tu veux suivre.
+            Le total et la progression se mettent a jour sur cette selection.
+          </p>
+        </article>
+
+        <article className="guide-panel">
+          <h2>2. Remplir la checklist</h2>
+          <p>
+            En vue Details, coche <strong>Je l'ai</strong>, ajoute tes exemplaires en
+            <strong> Echange</strong>, marque <strong>Recherche</strong> et ajuste la priorite.
+          </p>
+        </article>
+
+        <article className="guide-panel">
+          <h2>3. Aller vite avec la vue N°</h2>
+          <p>
+            Passe en vue <strong>N°</strong>. Le mode <strong>Tag Je l'ai</strong> coche les
+            cartes. Le mode <strong>Tag Double</strong> ajoute un exemplaire a l'echange a chaque
+            clic.
+          </p>
+        </article>
+
+        <article className="guide-panel">
+          <h2>4. Sauvegarder avec un compte</h2>
+          <p>
+            Connecte-toi pour synchroniser ta collection dans Supabase. Ton pseudo et ton Discord
+            servent aux autres collectionneurs pour te retrouver.
+          </p>
+        </article>
+
+        <article className="guide-panel">
+          <h2>5. Importer et exporter</h2>
+          <p>
+            <strong>Export</strong> telecharge un CSV de ta collection. <strong>Import</strong>
+            restaure ce CSV et le renvoie dans le cloud si tu es connecte.
+          </p>
+        </article>
+
+        <article className="guide-panel">
+          <h2>6. Trouver des echanges</h2>
+          <p>
+            La section <strong>Matches de doubles</strong> compare tes recherches avec les doubles
+            des autres, puis tes doubles avec leurs recherches.
+          </p>
+        </article>
+      </section>
+
+      <section className="guide-notes">
+        <h2>Conseils</h2>
+        <ul>
+          <li>Exporte avant une grosse session de saisie.</li>
+          <li>Si tu ajoutes plusieurs doubles, le compteur possede suit automatiquement.</li>
+          <li>Renseigne ton Discord dans le profil pour faciliter les contacts.</li>
+        </ul>
+      </section>
+    </main>
+  );
+}
+
 function App() {
+  const hashRoute = useHashRoute();
   const [cards, setCards] = useState<Card[]>([]);
   const [collection, setCollection] = useState<Record<string, CollectionEntry>>(() =>
     readStoredCollection(),
@@ -1021,6 +1127,8 @@ function App() {
       : "Connecte-toi pour sauvegarder dans Supabase."
     : "Mode local. Supabase n'est pas configure sur ce build.";
 
+  if (hashRoute === GUIDE_HASH) return <GuidePage />;
+
   return (
     <main className="shell">
       <section className="topbar">
@@ -1043,6 +1151,10 @@ function App() {
             <span>{autoCount} autos</span>
           </div>
           <section className="account-menu" aria-label="Account">
+            <a className="account-title guide-link" href={GUIDE_HASH}>
+              <HelpCircle size={17} />
+              <span>Guide</span>
+            </a>
             <button
               className="account-title"
               type="button"
