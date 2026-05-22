@@ -137,9 +137,13 @@ function isActiveEntry(entry: CollectionEntry) {
 }
 
 function normalizeEntry(entry: CollectionEntry): CollectionEntry {
+  const tradeCount = clamp(Number(entry.trade_count) || 0, 0, 99);
+  const ownedCount = clamp(Number(entry.owned_count) || 0, 0, 99);
   return {
-    ...entry,
-    owned_count: Math.max(entry.owned_count, entry.trade_count),
+    owned_count: Math.max(ownedCount, tradeCount),
+    trade_count: tradeCount,
+    wanted: Boolean(entry.wanted),
+    priority: clamp(Number(entry.priority) || 0, 0, 3),
   };
 }
 
@@ -845,7 +849,7 @@ function App() {
           owned_count: parseCount(cells[ownedIndex], 99),
           trade_count: parseCount(cells[tradeIndex], 99),
           wanted: parseWanted(cells[wantedIndex]),
-          priority: parseCount(cells[priorityIndex], 5),
+          priority: parseCount(cells[priorityIndex], 3),
         });
         imported[card.id] = entry;
         matchedRows += 1;
