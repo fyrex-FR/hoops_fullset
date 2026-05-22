@@ -10,6 +10,7 @@ import {
   Search,
   SlidersHorizontal,
   Star,
+  X,
   UserPlus,
   User as UserIcon,
 } from "lucide-react";
@@ -49,6 +50,7 @@ type UserCardRow = CollectionEntry & {
 };
 
 type ViewMode = "all" | "missing" | "owned" | "wanted" | "trade";
+type AuthMode = "login" | "signup";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "https://api-fullset.cardvaults.app";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -113,6 +115,7 @@ function App() {
   const [dbCardIds, setDbCardIds] = useState<Record<string, string>>({});
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [isSubsetProgressOpen, setIsSubsetProgressOpen] = useState(false);
 
   useEffect(() => {
@@ -532,6 +535,11 @@ function App() {
     void authenticate("login");
   }
 
+  function submitSignup(event: React.FormEvent) {
+    event.preventDefault();
+    void authenticate("signup");
+  }
+
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
     if (!supabase || !user) return;
@@ -594,118 +602,201 @@ function App() {
             <button
               className="account-title"
               type="button"
-              onClick={() => setIsAccountOpen((current) => !current)}
+              onClick={() => setIsAccountOpen(true)}
               aria-expanded={isAccountOpen}
             >
               <UserIcon size={17} />
               <span>{user ? profile?.display_name || user.email : "Compte"}</span>
             </button>
-            {supabase ? (
-              user ? (
-                <div className={`account-panel ${isAccountOpen ? "open" : ""}`}>
-                  <div className="account-line">
-                    <UserIcon size={17} />
-                    <span>
-                      {profile?.display_name || user.email}
-                      {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
-                      {syncMessage ? <small>{syncMessage}</small> : null}
-                    </span>
-                    <button type="button" onClick={() => supabase.auth.signOut()}>
-                      Sign out
-                    </button>
-                  </div>
-                  <form className="profile-form" onSubmit={saveProfile}>
-                    <input
-                      value={profileName}
-                      onChange={(event) => setProfileName(event.target.value)}
-                      placeholder="Public username"
-                      type="text"
-                    />
-                    <input
-                      value={discordHandle}
-                      onChange={(event) => setDiscordHandle(event.target.value)}
-                      placeholder="Discord username"
-                      type="text"
-                    />
-                    <button disabled={isSavingProfile} type="submit">
-                      {isSavingProfile ? "Saving..." : "Save profile"}
-                    </button>
-                    {profileMessage ? <span>{profileMessage}</span> : null}
-                  </form>
-                </div>
-              ) : (
-                <form className={`account-form ${isAccountOpen ? "open" : ""}`} onSubmit={submitLogin}>
-                  <div className="account-form-header">
-                    <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
-                    <span>
-                      <strong>Compte collectionneur</strong>
-                      <small>Email, mot de passe et Discord pour les echanges.</small>
-                    </span>
-                  </div>
-                  <div className="account-fields">
-                    <label>
-                      <small>Email</small>
-                      <input
-                        autoComplete="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        placeholder="collector@email.com"
-                        required
-                        type="email"
-                      />
-                    </label>
-                    <label>
-                      <small>Mot de passe</small>
-                      <input
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        placeholder="Minimum 6 caracteres"
-                        required
-                        type="password"
-                      />
-                    </label>
-                    <label>
-                      <small>Pseudo public</small>
-                      <input
-                        autoComplete="nickname"
-                        value={signupName}
-                        onChange={(event) => setSignupName(event.target.value)}
-                        placeholder="Ex: Fyrex"
-                        type="text"
-                      />
-                    </label>
-                    <label>
-                      <small>Discord</small>
-                      <input
-                        value={signupDiscord}
-                        onChange={(event) => setSignupDiscord(event.target.value)}
-                        placeholder="pseudo Discord"
-                        type="text"
-                      />
-                    </label>
-                  </div>
-                  <div className="account-actions">
-                    <button disabled={isAuthenticating} type="submit">
-                      {isAuthenticating ? "..." : "Se connecter"}
-                    </button>
-                    <button
-                      disabled={isAuthenticating}
-                      onClick={() => void authenticate("signup")}
-                      type="button"
-                    >
-                      Creer le compte
-                    </button>
-                  </div>
-                  {authMessage ? <span className="account-message">{authMessage}</span> : null}
-                </form>
-              )
-            ) : (
-              <span className="account-local">Local</span>
-            )}
+            {!supabase ? <span className="account-local">Local</span> : null}
           </section>
         </div>
       </section>
+
+      {isAccountOpen ? (
+        <section className="account-modal-backdrop" aria-label="Compte">
+          <div className="account-modal" role="dialog" aria-modal="true">
+            <div className="account-modal-header">
+              <div>
+                <p className="eyebrow">Compte</p>
+                <h2>{user ? "Profil collectionneur" : "Acces collectionneur"}</h2>
+              </div>
+              <button className="modal-close" type="button" onClick={() => setIsAccountOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {!supabase ? (
+              <p className="account-note">Mode local. La synchronisation cloud sera disponible quand Supabase sera configure sur ce build.</p>
+            ) : user ? (
+              <div className="account-panel open">
+                <div className="account-line">
+                  <UserIcon size={17} />
+                  <span>
+                    {profile?.display_name || user.email}
+                    {profile?.discord_handle ? <small>Discord: {profile.discord_handle}</small> : null}
+                    {syncMessage ? <small>{syncMessage}</small> : null}
+                  </span>
+                  <button type="button" onClick={() => supabase.auth.signOut()}>
+                    Se deconnecter
+                  </button>
+                </div>
+                <form className="profile-form" onSubmit={saveProfile}>
+                  <label>
+                    <small>Pseudo public</small>
+                    <input
+                      value={profileName}
+                      onChange={(event) => setProfileName(event.target.value)}
+                      placeholder="Pseudo public"
+                      type="text"
+                    />
+                  </label>
+                  <label>
+                    <small>Discord</small>
+                    <input
+                      value={discordHandle}
+                      onChange={(event) => setDiscordHandle(event.target.value)}
+                      placeholder="Pseudo Discord"
+                      type="text"
+                    />
+                  </label>
+                  <button disabled={isSavingProfile} type="submit">
+                    {isSavingProfile ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                  {profileMessage ? <span>{profileMessage}</span> : null}
+                </form>
+              </div>
+            ) : (
+              <>
+                <div className="auth-tabs" role="tablist" aria-label="Mode de connexion">
+                  <button
+                    className={authMode === "login" ? "active" : ""}
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setAuthMessage(null);
+                    }}
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    className={authMode === "signup" ? "active" : ""}
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("signup");
+                      setAuthMessage(null);
+                    }}
+                  >
+                    Creer un compte
+                  </button>
+                </div>
+
+                {authMode === "login" ? (
+                  <form className="account-form open" onSubmit={submitLogin}>
+                    <div className="account-form-header">
+                      <UserIcon className="account-form-icon" size={18} aria-hidden="true" />
+                      <span>
+                        <strong>Connexion</strong>
+                        <small>Retrouve ta collection synchronisee.</small>
+                      </span>
+                    </div>
+                    <div className="account-fields login-fields">
+                      <label>
+                        <small>Email</small>
+                        <input
+                          autoComplete="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="collector@email.com"
+                          required
+                          type="email"
+                        />
+                      </label>
+                      <label>
+                        <small>Mot de passe</small>
+                        <input
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          placeholder="Minimum 6 caracteres"
+                          required
+                          type="password"
+                        />
+                      </label>
+                    </div>
+                    <div className="account-actions">
+                      <button disabled={isAuthenticating} type="submit">
+                        {isAuthenticating ? "Connexion..." : "Se connecter"}
+                      </button>
+                    </div>
+                    {authMessage ? <span className="account-message">{authMessage}</span> : null}
+                  </form>
+                ) : (
+                  <form className="account-form open" onSubmit={submitSignup}>
+                    <div className="account-form-header">
+                      <UserPlus className="account-form-icon" size={18} aria-hidden="true" />
+                      <span>
+                        <strong>Creation du compte</strong>
+                        <small>Email, mot de passe, pseudo public et Discord pour les echanges.</small>
+                      </span>
+                    </div>
+                    <div className="account-fields">
+                      <label>
+                        <small>Email</small>
+                        <input
+                          autoComplete="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="collector@email.com"
+                          required
+                          type="email"
+                        />
+                      </label>
+                      <label>
+                        <small>Mot de passe</small>
+                        <input
+                          autoComplete="new-password"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          placeholder="Minimum 6 caracteres"
+                          required
+                          type="password"
+                        />
+                      </label>
+                      <label>
+                        <small>Pseudo public</small>
+                        <input
+                          autoComplete="nickname"
+                          value={signupName}
+                          onChange={(event) => setSignupName(event.target.value)}
+                          placeholder="Ex: Fyrex"
+                          required
+                          type="text"
+                        />
+                      </label>
+                      <label>
+                        <small>Discord</small>
+                        <input
+                          value={signupDiscord}
+                          onChange={(event) => setSignupDiscord(event.target.value)}
+                          placeholder="pseudo Discord"
+                          type="text"
+                        />
+                      </label>
+                    </div>
+                    <div className="account-actions">
+                      <button disabled={isAuthenticating} type="submit">
+                        {isAuthenticating ? "Creation..." : "Creer le compte"}
+                      </button>
+                    </div>
+                    {authMessage ? <span className="account-message">{authMessage}</span> : null}
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="collection-bar" aria-label="Collection progress">
         <div>
